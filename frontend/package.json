@@ -11,10 +11,17 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "axios": "^1.19.0",
+    "chart.js": "^4.5.1",
+    "dayjs": "^1.11.23",
+    "dhtmlx-gantt": "^10.0.2",
+    "echarts": "^6.1.0",
+    "frappe-gantt": "^1.2.2",
+    "jsgantt-improved": "^3.0.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-vue-next": "^1.0.0",
     "vue": "^3.5.41",
+    "vue-ganttastic": "^0.9.34",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
