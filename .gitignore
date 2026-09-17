@@ -1,0 +1,31 @@
+﻿# Dependencies
+**/node_modules/
+**/vendor/
+
+# Environment and sensitive keys
+**/.env
+**/.env.*
+!**/.env.example
+**/storage/app/*.json
+**/*serviceAccount*.json
+**/*.sqlite
+**/*.sqlite-journal
+
+# Build outputs
+**/dist/
+**/public/build/
+**/public/hot/
+**/public/storage
+
+# Logs and cache
+*.log
+**/*.log
+**/.phpunit.cache
+**/.eslintcache
+**/.cache
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
