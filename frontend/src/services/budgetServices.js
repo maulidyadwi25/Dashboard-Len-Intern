@@ -2,7 +2,11 @@ import api from "./api";
 
 export const budgetService = {
   getDashboardData() {
-    return api.get("/budget-dashboard");
+    return api.get("/projects/1/dashboard");
+  },
+
+  updateDashboardData(payload) {
+    return api.post("/budget-dashboard", payload);
   },
 
   downloadPdfReport() {
@@ -11,5 +15,15 @@ export const budgetService = {
 
   getGanttTasks() {
     return api.get("/gantt-tasks");
+  },
+
+  getProcurementData() {
+    return api.get("/procurement");
+  },
+
+  updateProcurementStartDate(itemId, newDate) {
+    return api.patch(`/procurement/${itemId}/start-date`, {
+      start_date: newDate,
+    });
   },
 };

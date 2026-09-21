@@ -2,186 +2,448 @@
 
 namespace App\Services;
 
+use App\Models\BudgetBreakdown;
+use App\Models\MasterProject;
+use App\Models\ProcurementItem;
+use App\Models\ProjectSpreadsheet;
 use Google\Client;
 use Google\Service\Sheets;
+use GuzzleHttp\Client as GuzzleClient;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class GoogleSheetsService
 {
     protected Sheets $service;
-    protected string $spreadsheetId;
+
+    protected string $defaultSpreadsheetId;
 
     public function __construct()
     {
-        $this->spreadsheetId = config('services.google_sheets.spreadsheet_id');
+        $this->defaultSpreadsheetId = (string) (config('services.google_sheets.spreadsheet_id')
+            ?? env('GOOGLE_SPREADSHEET_ID', '1NlWhk4kzjKmeuujnMxJsZpL8LWfZudY5fC4nEyUWU70'));
 
-        $client = new Client();
+        $credentialsPath = base_path((string) config('services.google_sheets.credentials_path', 'storage/app/google/serviceAccountIntern.json'));
+        if (! file_exists($credentialsPath)) {
+            $credentialsPath = base_path('storage/app/google/serviceAccountIntern.json');
+        }
+
+        $client = new Client;
         $client->setApplicationName('Laravel Project Dashboard');
-        $client->setScopes([Sheets::SPREADSHEETS_READONLY]);
-        $client->setAuthConfig(base_path(config('services.google_sheets.credentials_path')));
+        $client->setScopes([Sheets::SPREADSHEETS]);
+        if (file_exists($credentialsPath)) {
+            $client->setAuthConfig($credentialsPath);
+        }
+        $client->setHttpClient(new GuzzleClient([
+            'connect_timeout' => 5,
+            'timeout' => 10,
+        ]));
 
         $this->service = new Sheets($client);
     }
 
-    public function getProjectDashboard(): array
+    /**
+     * Tier 2 Multi-Spreadsheet Sync Router.
+     * Iterates over all active spreadsheets configured for the MasterProject and delegates
+     * to the appropriate handler using PHP 8 match expression.
+     *
+     * @return array<string|int, array<string, mixed>>
+     */
+    public function syncProject(MasterProject $project): array
     {
-        $spreadsheet = $this->service->spreadsheets->get($this->spreadsheetId);
-        $sheetsList = $spreadsheet->getSheets();
+        $spreadsheets = $project->spreadsheets()
+            ->where('is_active', true)
+            ->get();
 
-        // 1. Deteksi Tab Sheet 1 & Sheet 2 secara dinamis
-        $progressSheetTitle = $sheetsList[0]->getProperties()->getTitle();
-        $budgetSheetTitle = $sheetsList[1]->getProperties()->getTitle() ?? $progressSheetTitle;
+        $results = [];
 
-        foreach ($sheetsList as $s) {
-            $title = $s->getProperties()->getTitle();
-            if (trim($title) === 'Sheet5' || str_contains(strtolower($title), 'budget')) {
-                $budgetSheetTitle = $title;
-                break;
+        foreach ($spreadsheets as $spreadsheet) {
+            try {
+                // Route sync execution using PHP 8 match expression
+                $syncDetails = match ($spreadsheet->type) {
+                    'procurement' => $this->handleProcurementSync($project, $spreadsheet),
+                    'budget_control', 'budget' => $this->handleBudgetSync($project, $spreadsheet),
+                    default => throw new \InvalidArgumentException("Unsupported spreadsheet type: [{$spreadsheet->type}]"),
+                };
+
+                // Update last_synced_at timestamp on project_spreadsheets
+                $spreadsheet->update([
+                    'last_synced_at' => now(),
+                ]);
+
+                $results[$spreadsheet->id] = [
+                    'spreadsheet_id' => $spreadsheet->spreadsheet_id,
+                    'type' => $spreadsheet->type,
+                    'status' => 'success',
+                    'details' => $syncDetails,
+                ];
+            } catch (\Throwable $e) {
+                Log::error("Failed syncing spreadsheet [{$spreadsheet->id}] for MasterProject [{$project->id}]: ".$e->getMessage(), [
+                    'project_id' => $project->id,
+                    'spreadsheet_id' => $spreadsheet->spreadsheet_id,
+                    'type' => $spreadsheet->type,
+                    'trace' => $e->getTraceAsString(),
+                ]);
+
+                $results[$spreadsheet->id] = [
+                    'spreadsheet_id' => $spreadsheet->spreadsheet_id,
+                    'type' => $spreadsheet->type,
+                    'status' => 'failed',
+                    'error' => $e->getMessage(),
+                ];
             }
         }
 
-        // 2. Tarik kedua sheet dalam 1 request batch (Rentang Sheet 1 diperluas ke A1:G30)
-        $response = $this->service->spreadsheets_values->batchGet($this->spreadsheetId, [
-            'ranges' => [
-                "'{$progressSheetTitle}'!A1:G30",
-                "'{$budgetSheetTitle}'!A1:F35",
-            ],
-        ]);
+        return $results;
+    }
 
-        $valueRanges = $response->getValueRanges();
-        $sheet1Rows = $valueRanges[0]->getValues() ?? [];
-        $sheet2Rows = $valueRanges[1]->getValues() ?? [];
+    /**
+     * Handler for procurement spreadsheet synchronization.
+     *
+     * @return array<string, mixed>
+     */
+    public function handleProcurementSync(MasterProject $project, ProjectSpreadsheet $spreadsheet): array
+    {
+        $rows = $this->fetchSpreadsheetRows($spreadsheet->spreadsheet_id, ['6. Procurement', 'Procurement']);
+        $items = $this->parseProcurementRows($rows);
 
-        $metadata = [
-            'nama_proyek'        => 'ABCDE PROJECT NAME',
-            'kode_proyek'        => '-',
-            'nama_pimpro'        => '-',
-            'nama_client'        => '-',
-            'net_contract_value' => 0.0,
-            'tanggal_update'     => '-',
+        // Atomic transaction to ensure transactional consistency
+        DB::transaction(function () use ($project, $items) {
+            // Ambil start_date yang sudah ada agar tidak tertimpa saat sync
+            $existingStartDates = $project->procurementItems()
+                ->whereNotNull('start_date')
+                ->pluck('start_date', 'no')
+                ->toArray();
+
+            $project->procurementItems()->delete();
+
+            if (! empty($items)) {
+                $payload = array_map(fn (array $item) => [
+                    'master_project_id' => $project->id,
+                    'no' => $item['no'],
+                    'is_sub_item' => $item['is_sub_item'],
+                    'main_no' => $item['main_no'],
+                    'category' => $item['category'],
+                    'item_name' => $item['item_name'],
+                    'vendor' => $item['vendor'],
+                    'target_date' => $item['target_date'],
+                    'status' => $item['status'],
+                    'priority' => $item['priority'],
+                    'start_date' => $existingStartDates[$item['no']] ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ], $items);
+
+                ProcurementItem::insert($payload);
+            }
+        });
+
+        return [
+            'items_count' => count($items),
+        ];
+    }
+
+    /**
+     * Handler for budget spreadsheet synchronization.
+     *
+     * @return array<string, mixed>
+     */
+    public function handleBudgetSync(MasterProject $project, ProjectSpreadsheet $spreadsheet): array
+    {
+        $rows = $this->fetchSpreadsheetRows($spreadsheet->spreadsheet_id, ['Budget Control', 'Budget', 'Sheet5']);
+        $summary = $this->parseBudgetSummary($rows);
+        $items = $this->parseBudgetRows($rows);
+
+        // Atomic transaction to ensure transactional consistency
+        DB::transaction(function () use ($project, $items) {
+            $project->budgetBreakdowns()->delete();
+
+            if (! empty($items)) {
+                $payload = array_map(fn (array $item) => [
+                    'master_project_id' => $project->id,
+                    'cost_center' => $item['cost_center'],
+                    'sap_remaining' => $item['sap_remaining'],
+                    'wbs_uninput' => $item['wbs_uninput'],
+                    'total_amount' => $item['total_amount'],
+                    'estimated_need' => $item['estimated_need'],
+                    'variance' => $item['variance'],
+                    'allocated_amount' => $item['total_amount'],
+                    'used_amount' => $item['estimated_need'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ], $items);
+
+                BudgetBreakdown::insert($payload);
+            }
+        });
+
+        return [
+            'breakdowns_count' => count($items),
+            'summary' => $summary,
+        ];
+    }
+
+    /**
+     * Fetch all rows from Google Sheets, attempting to match preferred sheet titles.
+     *
+     * @param  array<int, string>  $preferredSheetTitles
+     * @return array<int, array<int, string>>
+     */
+    public function fetchSpreadsheetRows(string $spreadsheetId, array $preferredSheetTitles = []): array
+    {
+        $spreadsheet = $this->service->spreadsheets->get($spreadsheetId);
+        $sheetsList = $spreadsheet->getSheets();
+
+        $targetTitle = null;
+
+        foreach ($preferredSheetTitles as $preferred) {
+            foreach ($sheetsList as $sheet) {
+                $title = (string) $sheet->getProperties()->getTitle();
+                if (stripos($title, $preferred) !== false) {
+                    $targetTitle = $title;
+                    break 2;
+                }
+            }
+        }
+
+        if (! $targetTitle && ! empty($sheetsList)) {
+            $targetTitle = (string) $sheetsList[0]->getProperties()->getTitle();
+        }
+
+        if (! $targetTitle) {
+            return [];
+        }
+
+        $range = "'{$targetTitle}'!A1:Z200";
+        $response = $this->service->spreadsheets_values->get($spreadsheetId, $range);
+
+        return $response->getValues() ?? [];
+    }
+
+    /**
+     * Parse raw rows from procurement sheet into normalized array.
+     *
+     * @param  array<int, array<int, mixed>>  $rows
+     * @return array<int, array{no: ?string, is_sub_item: bool, main_no: ?int, category: string, item_name: string, vendor: ?string, target_date: ?string, status: string, priority: string}>
+     */
+    public function parseProcurementRows(array $rows): array
+    {
+        $items = [];
+        $headerIndex = null;
+        $colMap = [
+            'no' => 0,
+            'item_name' => 1,
+            'vendor' => 2,
+            'target_date' => 3,
+            'status' => 4,
+            'category' => 7,
         ];
 
-        $summary = [
-            'sisa_anggaran_sap'  => 0,
-            'wbs_belum_input'    => 0,
-            'total'              => 0,
-            'estimasi_kebutuhan' => 0,
-            'selisih_variance'   => 0,
+        foreach ($rows as $index => $row) {
+            if (empty(array_filter($row))) {
+                continue;
+            }
+
+            $firstCell = strtoupper(trim((string) ($row[0] ?? '')));
+            if ($firstCell === 'NO' || stripos($firstCell, 'NO') !== false) {
+                $headerIndex = $index;
+                // Map column headers dynamically if available
+                foreach ($row as $colIdx => $colVal) {
+                    $val = strtoupper(trim((string) $colVal));
+                    if (str_contains($val, 'NAMA PENGADAAN') || str_contains($val, 'ITEM')) {
+                        $colMap['item_name'] = $colIdx;
+                    } elseif (str_contains($val, 'VENDOR')) {
+                        $colMap['vendor'] = $colIdx;
+                    } elseif (str_contains($val, 'TARGET') || str_contains($val, 'TGL')) {
+                        $colMap['target_date'] = $colIdx;
+                    } elseif (str_contains($val, 'JENIS') || str_contains($val, 'CATEGORY')) {
+                        $colMap['category'] = $colIdx;
+                    } elseif (str_contains($val, 'STATUS')) {
+                        $colMap['status'] = $colIdx;
+                    }
+                }
+
+                continue;
+            }
+
+            if ($headerIndex !== null && $index > $headerIndex) {
+                $rawNo = trim((string) ($row[$colMap['no']] ?? ''));
+                $itemName = trim((string) ($row[$colMap['item_name']] ?? ''));
+                if ($itemName === '') {
+                    continue;
+                }
+
+                $isSubItem = str_contains($rawNo, '.');
+                $mainNo = $rawNo !== '' ? ($isSubItem ? (int) explode('.', $rawNo)[0] : (int) $rawNo) : null;
+                $vendor = trim((string) ($row[$colMap['vendor']] ?? ''));
+                $targetDate = trim((string) ($row[$colMap['target_date']] ?? ''));
+                $category = trim((string) ($row[$colMap['category']] ?? ''));
+                $status = trim((string) ($row[$colMap['status']] ?? 'Open'));
+                $normalizedStatus = $this->normalizeProcurementStatus($status);
+
+                $items[] = [
+                    'no' => $rawNo !== '' ? $rawNo : null,
+                    'is_sub_item' => $isSubItem,
+                    'main_no' => $mainNo,
+                    'category' => $category !== '' ? $category : 'General',
+                    'item_name' => $itemName,
+                    'vendor' => $vendor !== '' ? $vendor : null,
+                    'target_date' => $targetDate !== '' ? $targetDate : null,
+                    'status' => $normalizedStatus,
+                    'priority' => match ($normalizedStatus) {
+                        'Done' => 'Low',
+                        'In Progress' => 'Medium',
+                        'Open' => 'Low',
+                        default => 'High',
+                    },
+                ];
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * Parse raw rows from budget control sheet into normalized array.
+     *
+     * @param  array<int, array<int, mixed>>  $rows
+     * @return array<int, array{cost_center: string, allocated_amount: float, used_amount: float}>
+     */
+    public function parseBudgetRows(array $rows): array
+    {
+        $breakdowns = [];
+
+        foreach ($rows as $index => $row) {
+            if (empty(array_filter($row))) {
+                continue;
+            }
+
+            $col0 = trim((string) ($row[0] ?? ''));
+            $lower = strtolower($col0);
+
+            if ($index === 4) {
+                continue;
+            }
+
+            // Skip known header / metadata labels
+            if (
+                $col0 === '' ||
+                in_array($lower, ['nama proyek', 'tanggal update', 'budget control', 'wbs'])
+            ) {
+                continue;
+            }
+
+            $sapRemaining = $this->cleanNumber($row[1] ?? 0);
+            $wbsUninput = $this->cleanNumber($row[2] ?? 0);
+            $totalAmount = $this->cleanNumber($row[3] ?? 0);
+            $estimatedNeed = $this->cleanNumber($row[4] ?? 0);
+            $variance = $this->cleanNumber($row[5] ?? 0);
+
+            $breakdowns[] = [
+                'cost_center' => $col0,
+                'sap_remaining' => $sapRemaining,
+                'wbs_uninput' => $wbsUninput,
+                'total_amount' => $totalAmount,
+                'estimated_need' => $estimatedNeed,
+                'variance' => $variance,
+                'allocated_amount' => $totalAmount,
+                'used_amount' => $estimatedNeed,
+            ];
+        }
+
+        return $breakdowns;
+    }
+
+    public function parseBudgetSummary(array $rows): array
+    {
+        $summaryRow = $rows[4] ?? [];
+
+        return [
+            'total_sap_remaining' => $this->cleanNumber($summaryRow[1] ?? 0),
+            'total_wbs_uninput' => $this->cleanNumber($summaryRow[2] ?? 0),
+            'total_budget' => $this->cleanNumber($summaryRow[3] ?? 0),
+            'total_estimated_need' => $this->cleanNumber($summaryRow[4] ?? 0),
+            'total_variance' => $this->cleanNumber($summaryRow[5] ?? 0),
         ];
+    }
 
-        $breakdown = [];
-        $no = 1;
+    /**
+     * Clean numeric string to float.
+     */
+    public function cleanNumber(mixed $value): float
+    {
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
 
-        // 3. Parse Sheet 1: Kode Proyek, Nama Pimpro, Nama Client, & Net Contract Value
-        foreach ($sheet1Rows as $row) {
-            if (empty(array_filter($row))) continue;
+        $cleaned = preg_replace('/[^0-9.\-]/', '', str_replace(',', '', (string) $value));
 
-            $colA = strtolower(trim((string)($row[0] ?? '')));
+        return (float) ($cleaned ?: 0);
+    }
 
-            // Cari isi sel pertama yang valid setelah Kolom A (melewati sel kosong atau ':')
-            $rowValue = null;
-            for ($i = 1; $i < count($row); $i++) {
-                $val = trim((string)($row[$i] ?? ''));
-                if ($val !== '' && $val !== ':') {
-                    $rowValue = $val;
+    private function normalizeProcurementStatus(string $status): string
+    {
+        $raw = trim($status);
+        if ($raw === '') {
+            return 'Open';
+        }
+
+        $normalized = strtolower($raw);
+
+        if (in_array($normalized, ['done', 'completed', 'selesai', 'finish', 'finished'])) {
+            return 'Done';
+        }
+
+        if (in_array($normalized, ['in progress', 'progress', 'inprogress', 'ongoing', 'on going'])) {
+            return 'In Progress';
+        }
+
+        if (in_array($normalized, ['overdue', 'delay', 'late', 'terlambat'])) {
+            return 'Overdue';
+        }
+
+        if (in_array($normalized, ['open', 'pending', 'belum dimulai', 'new'])) {
+            return 'Open';
+        }
+
+        return ucfirst($raw);
+    }
+
+    /**
+     * Legacy adapter: Get spreadsheet last update date.
+     */
+    public function getSheetLastUpdate(): string
+    {
+        try {
+            $spreadsheet = $this->service->spreadsheets->get($this->defaultSpreadsheetId);
+            $sheetsList = $spreadsheet->getSheets();
+
+            $progressSheetTitle = $sheetsList[0]->getProperties()->getTitle();
+            $budgetSheetTitle = $sheetsList[1]->getProperties()->getTitle() ?? $progressSheetTitle;
+
+            foreach ($sheetsList as $s) {
+                $title = (string) $s->getProperties()->getTitle();
+                if (trim($title) === 'Sheet5' || str_contains(strtolower($title), 'budget')) {
+                    $budgetSheetTitle = $title;
                     break;
                 }
             }
 
-            if ($rowValue === null) continue;
+            $response = $this->service->spreadsheets_values->get(
+                $this->defaultSpreadsheetId,
+                "'{$budgetSheetTitle}'!A1:B10"
+            );
 
-            // Mapping Kode Proyek
-            if (str_contains($colA, 'kode proyek') || str_contains($colA, 'project code')) {
-                $metadata['kode_proyek'] = $rowValue;
+            $rows = $response->getValues() ?? [];
+            foreach ($rows as $row) {
+                if (strtolower(trim((string) ($row[0] ?? ''))) === 'tanggal update') {
+                    return trim((string) ($row[1] ?? ''));
+                }
             }
-            // Mapping Nama Pimpro / Project Manager
-            elseif (
-                str_contains($colA, 'pimpro') ||
-                str_contains($colA, 'pimpinan proyek') ||
-                str_contains($colA, 'project manager') ||
-                str_contains($colA, 'nama pimpro')
-            ) {
-                $metadata['nama_pimpro'] = $rowValue;
-            }
-            // Mapping Nama Client / Klien
-            elseif (
-                str_contains($colA, 'client') ||
-                str_contains($colA, 'klien') ||
-                str_contains($colA, 'customer') ||
-                str_contains($colA, 'pemberi kerja')
-            ) {
-                $metadata['nama_client'] = $rowValue;
-            }
-            // Mapping Net Contract Value / Nilai Kontrak
-            elseif (
-                str_contains($colA, 'contract') ||
-                str_contains($colA, 'kontrak') ||
-                str_contains($colA, 'nilai kontrak')
-            ) {
-                $metadata['net_contract_value'] = $this->cleanNumber($rowValue);
-            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to fetch Google Sheet last update date: '.$e->getMessage());
         }
 
-        // 4. Parse Sheet 2: Metadata Proyek, Total KPI, dan Rincian WBS
-        foreach ($sheet2Rows as $row) {
-            if (empty(array_filter($row))) continue;
-
-            $colA = trim((string)($row[0] ?? ''));
-            $lowerColA = strtolower($colA);
-
-            if ($lowerColA === 'nama proyek') {
-                $metadata['nama_proyek'] = $row[1] ?? $metadata['nama_proyek'];
-                continue;
-            }
-
-            if ($lowerColA === 'tanggal update') {
-                $metadata['tanggal_update'] = $row[1] ?? $metadata['tanggal_update'];
-                continue;
-            }
-
-            if ($lowerColA === 'total') {
-                $summary = [
-                    'sisa_anggaran_sap'  => $this->cleanNumber($row[1] ?? 0),
-                    'wbs_belum_input'    => $this->cleanNumber($row[2] ?? 0),
-                    'total'              => $this->cleanNumber($row[3] ?? 0),
-                    'estimasi_kebutuhan' => $this->cleanNumber($row[4] ?? 0),
-                    'selisih_variance'   => $this->cleanNumber($row[5] ?? 0),
-                ];
-                continue;
-            }
-
-            // Filter pengecualian Header, Efisiensi, dan Kurs
-            if (
-                in_array($lowerColA, ['budget control', 'wbs', 'efisiensi', 'kurs']) ||
-                str_starts_with($lowerColA, 'efisiensi') ||
-                str_starts_with($lowerColA, 'kurs')
-            ) {
-                continue;
-            }
-
-            if ($colA !== '') {
-                $breakdown[] = [
-                    'no'                 => $no++,
-                    'wbs_element'        => $colA,
-                    'sisa_anggaran_sap'  => $this->cleanNumber($row[1] ?? 0),
-                    'wbs_belum_input'    => $this->cleanNumber($row[2] ?? 0),
-                    'total'              => $this->cleanNumber($row[3] ?? 0),
-                    'estimasi_kebutuhan' => $this->cleanNumber($row[4] ?? 0),
-                    'selisih_variance'   => $this->cleanNumber($row[5] ?? 0),
-                ];
-            }
-        }
-
-        return [
-            'metadata'         => $metadata,
-            'budget_summary'   => $summary,
-            'budget_breakdown' => $breakdown,
-        ];
-    }
-
-    private function cleanNumber($value): float
-    {
-        if (is_numeric($value)) return (float)$value;
-        $cleaned = preg_replace('/[^0-9\.\-]/', '', str_replace(',', '', (string)$value));
-        return (float)($cleaned ?: 0);
+        return date('Y-m-d H:i:s');
     }
 }

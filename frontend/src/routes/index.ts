@@ -1,17 +1,26 @@
 import { createRouter, createWebHistory } from "vue-router";
-import Dashboard from "../pages/Dashboard.vue";
-import DashboardGantt from "../pages/DashboardGantt.vue";
+import Dashboard from "../pages/BudgetMonitoring.vue";
+import Procurement from "../pages/Procurement.vue";
 
 const routes = [
   {
     path: "/",
-    name: "DashboardMain",
+    name: "ProjectMonitoringMain",
+    component: Procurement,
+  },
+  {
+    path: "/budget-monitoring",
+    name: "BudgetMonitoring",
     component: Dashboard,
   },
   {
-    path: "/gantt",
-    name: "DashboardGantt",
-    component: DashboardGantt,
+    path: "/budget",
+    redirect: "/budget-monitoring",
+  },
+  {
+    path: "/procurement",
+    name: "Procurement",
+    component: Procurement,
   },
 ];
 

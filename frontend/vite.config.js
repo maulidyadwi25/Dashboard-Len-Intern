@@ -8,10 +8,6 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),
-      "frappe-gantt-css": path.resolve(
-        __dirname,
-        "node_modules/frappe-gantt/dist/frappe-gantt.css",
-      ),
     },
   },
   optimizeDeps: {

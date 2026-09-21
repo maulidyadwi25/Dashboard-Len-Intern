@@ -4,11 +4,11 @@ import { budgetService } from "@/services/budgetServices";
 import { generateBudgetPdf } from "@/utils/pdfExport";
 import { useCurrency } from "@/composables/useCurrency";
 
-import Navbar from "@/components/common/Navbar.vue";
+import Navbar from "@/components/budget-monitoring/Navbar.vue";
 import Footer from "@/components/common/Footer.vue";
-import ProjectHeader from "@/components/budget/ProjectHeader.vue";
-import BudgetSummaryCards from "@/components/budget/BudgetSummaryCards.vue";
-import BudgetBreakdownTable from "@/components/budget/BudgetBreakdownTable.vue";
+import ProjectHeader from "@/components/budget-monitoring/ProjectHeader.vue";
+import BudgetSummaryCards from "@/components/budget-monitoring/BudgetSummaryCards.vue";
+import BudgetBreakdownTable from "@/components/budget-monitoring/BudgetBreakdownTable.vue";
 
 const { selectedCurrency, exchangeRates, formatCurrency } = useCurrency();
 
@@ -25,18 +25,29 @@ const fetchDashboardData = async () => {
     isLoading.value = true;
     errorMessage.value = "";
 
-    // Memanggil API melalui budgetService terpusat
     const response = await budgetService.getDashboardData();
+    const payload = response.data?.data ?? response.data ?? {};
 
-    const payload = response.data?.data;
-    if (payload?.sheetData) {
-      sheetData.value = payload.sheetData;
-      if (payload.exchangeRates) {
-        exchangeRates.value = {
-          ...exchangeRates.value,
-          ...payload.exchangeRates,
-        };
-      }
+    const normalizedSheetData = payload.sheetData ?? {
+      metadata: payload.metadata ?? {},
+      budget_summary: payload.budget_summary ?? {
+        sisa_anggaran_sap: payload.aggregates?.total_sap_remaining ?? 0,
+        wbs_belum_input: payload.aggregates?.total_wbs_uninput ?? 0,
+        total: payload.aggregates?.total_budget ?? 0,
+        estimasi_kebutuhan: payload.aggregates?.total_estimated_need ?? 0,
+        selisih_variance: payload.aggregates?.total_variance ?? 0,
+      },
+      budget_breakdown:
+        payload.budget_breakdown ?? payload.budget_breakdowns ?? [],
+    };
+
+    sheetData.value = normalizedSheetData;
+
+    if (payload.exchangeRates) {
+      exchangeRates.value = {
+        ...exchangeRates.value,
+        ...payload.exchangeRates,
+      };
     }
   } catch (error) {
     console.error("Error fetching API:", error);
