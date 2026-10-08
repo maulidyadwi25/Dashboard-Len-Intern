@@ -1,33 +1,34 @@
 <template>
-  <div class="min-h-screen bg-[#f8fafc] text-gray-800 font-sans pb-12">
+  <div class="min-h-screen bg-[#f7f9fb] text-[#191c1e] font-sans pb-12">
     <!-- TOP NAVBAR (Ditambahkan class hide-on-print) -->
     <header class="bg-white border-b border-gray-200 sticky top-0 z-50 hide-on-print">
       <div class="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
         <!-- Brand Logo & Top Nav Tabs -->
         <div class="flex items-center space-x-6">
           <div class="flex items-center space-x-2">
-            <span class="text-2xl font-bold text-[#1e3a8a] tracking-tight">Executive Command</span>
+            <span class="text-2xl font-bold text-[#004ac6] tracking-tight">Executive Command</span>
           </div>
 
           <!-- Project Dropdown Selector -->
-          <div v-if="projects.length > 0" class="flex items-center space-x-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs">
-            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Project:</span>
+          <div v-if="projects.length > 0" class="flex items-center space-x-2 bg-[#f7f9fb] px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs">
+            <span class="text-xs font-bold text-[#64748B] uppercase tracking-wider">Project:</span>
             <select 
               v-model="selectedProjectId" 
               @change="onProjectChange"
-              class="bg-transparent text-xs font-bold text-gray-800 focus:outline-none cursor-pointer"
+              class="bg-transparent text-xs font-bold text-[#191c1e] focus:outline-none cursor-pointer"
             >
+              <option value="all">All Projects</option>
               <option v-for="p in projects" :key="p.id" :value="p.id">
-                {{ p.project_name }} ({{ p.project_code }})
+                {{ p.type ? '[' + p.type + '] ' : '' }}{{ p.project_name }} ({{ p.project_code }})
               </option>
             </select>
           </div>
 
           <nav class="flex items-center space-x-4 text-sm font-medium">
-            <router-link :to="projectMonitoringLink" class="text-gray-500 hover:text-gray-700 pb-1">
+            <router-link :to="projectMonitoringLink" class="text-[#64748B] hover:text-[#434655] pb-1">
               Project Monitoring
             </router-link>
-            <router-link :to="procurementMonitoringLink" class="text-blue-600 font-semibold border-b-2 border-blue-600 pb-1">
+            <router-link :to="procurementMonitoringLink" class="text-[#004ac6] font-semibold border-b-2 border-[#004ac6] pb-1">
               Procurement Monitoring
             </router-link>
           </nav>
@@ -39,7 +40,7 @@
           <button 
             @click="triggerSync" 
             :disabled="isSyncing"
-            class="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold border border-blue-200 transition-colors cursor-pointer disabled:opacity-50"
+            class="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50 text-[#003da5] hover:bg-[#4d7fdd]/20 rounded-lg text-xs font-semibold border border-[#4d7fdd] transition-colors cursor-pointer disabled:opacity-50"
             title="Sinkronisasi data dari Google Sheets ke Database SQLite"
           >
             <svg :class="{ 'animate-spin': isSyncing }" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -48,10 +49,10 @@
             <span>{{ isSyncing ? 'Syncing...' : 'Sync Sheet' }}</span>
           </button>
 
-          <button class="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded-full hover:bg-gray-100">
+          <button class="text-[#64748B] hover:text-[#434655] transition-colors p-1.5 rounded-full hover:bg-[#737686]/15">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
           </button>
-          <button class="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded-full hover:bg-gray-100">
+          <button class="text-[#64748B] hover:text-[#434655] transition-colors p-1.5 rounded-full hover:bg-[#737686]/15">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
           </button>
           <div class="w-8 h-8 rounded-full bg-slate-200 border border-gray-300 overflow-hidden">
@@ -66,13 +67,13 @@
       <!-- Breadcrumb & Title Section -->
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 hide-on-print">
         <div>
-          <div class="flex items-center space-x-1.5 text-[11px] text-gray-400 font-medium mb-1">
+          <div class="flex items-center space-x-1.5 text-[11px] text-[#64748B] font-medium mb-1">
             <router-link :to="projectMonitoringLink" class="hover:underline">Project Monitoring</router-link>
             <span>&rsaquo;</span>
-            <span class="text-gray-700 font-semibold">Procurement Monitoring</span>
+            <span class="text-[#434655] font-semibold">Procurement Monitoring</span>
           </div>
-          <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Procurement Monitoring</h1>
-          <p class="text-xs text-gray-500 mt-0.5">
+          <h1 class="text-2xl font-bold text-[#191c1e] tracking-tight">Procurement Monitoring</h1>
+          <p class="text-xs text-[#64748B] mt-0.5">
             Monitoring and analysis of enterprise procurement activities, vendor performance, and efficiency metrics.
           </p>
         </div>
@@ -81,10 +82,10 @@
         <div class="flex flex-wrap items-center gap-3 self-end md:self-auto">
           <!-- Currency Conversion Switcher -->
           <div class="flex items-center space-x-1.5">
-            <label class="text-xs text-gray-600 font-bold">Currency View:</label>
+            <label class="text-xs text-[#434655] font-bold">Currency View:</label>
             <select 
               v-model="selectedCurrency" 
-              class="bg-blue-50 border border-blue-300 text-blue-900 font-bold rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs cursor-pointer"
+              class="bg-blue-50 border border-[#4d7fdd] text-[#004ac6] font-bold rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#4d7fdd] shadow-xs cursor-pointer"
             >
               <option value="IDR">IDR - Rupiah (Rp)</option>
               <option value="EUR">EUR - Euro (€)</option>
@@ -96,17 +97,21 @@
       </div>
 
       <!-- Error Message -->
-      <div v-if="errorMessage" class="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 mb-6 text-sm">
+      <div v-if="errorMessage" class="bg-[#ba1a1a]/10 text-[#ba1a1a] p-4 rounded-xl border border-[#ba1a1a]/25 mb-6 text-sm">
         {{ errorMessage }}
       </div>
 
       <!-- Loading State -->
       <div v-if="isLoading && procurementData.items.length === 0" class="bg-white rounded-xl p-6 border shadow-sm animate-pulse space-y-4 hide-on-print">
-        <div class="h-8 bg-gray-200 rounded w-1/3"></div>
-        <div class="h-4 bg-gray-200 rounded w-1/2"></div>
+        <div class="h-8 bg-[#737686] rounded w-1/3"></div>
+        <div class="h-4 bg-[#737686] rounded w-1/2"></div>
       </div>
 
       <template v-else>
+        <!-- Project Profile disembunyikan sementara
+        <ProjectProfileCard v-if="showProfile" :profile="projectProfile" />
+        -->
+
         <!-- KPI & CHARTS (Nilai Otomatis Terkonversi) -->
         <ProcurementMetrics1 
           :metrics="convertedProcurementData.metrics" 
@@ -121,15 +126,17 @@
           :tableData="convertedProcurementData.items" 
           :selectedCurrency="selectedCurrency" 
           :exchangeRates="exchangeRates"
-          :masterProjectId="selectedProjectId || (selectedProject ? selectedProject.id : 1)"
+          :masterProjectId="effectiveMasterProjectId"
+          :projectName="selectedProject ? selectedProject.project_name : ''"
           @update:selectedCurrency="selectedCurrency = $event"
           @update-item-field="onItemFieldUpdated"
+          @delete-item="onItemDeleted"
         />
       </template>
     </main>
 
     <!-- FOOTER MINIMALIS -->
-    <footer class="max-w-[1400px] mx-auto px-6 mt-16 flex flex-col md:flex-row justify-between items-center text-[11px] text-gray-400 gap-2 hide-on-print">
+    <footer class="max-w-[1400px] mx-auto px-6 mt-16 flex flex-col md:flex-row justify-between items-center text-[11px] text-[#64748B] gap-2 hide-on-print">
       <span>© 2026 Corporate Performance Systems. All rights reserved.</span>
       <div class="flex items-center space-x-4">
         <a href="#" class="hover:underline">Privacy Policy</a>
@@ -145,6 +152,7 @@ import axios from 'axios'
 import ProcurementMetrics1 from '@/components/Monitoring/ProcurementMetrics1.vue'
 import ProcurementCharts2 from '@/components/Monitoring/ProcurementCharts2.vue'
 import ProcurementTable3 from '@/components/Monitoring/ProcurementTable3.vue'
+import ProjectProfileCard from '@/components/Header/ProjectProfileCard.vue'
 import { parseProcurementData } from '@/utils/procurementParser.js'
 import { toBaseIdr, convertCurrency } from '@/utils/currencyConverter.js'
 
@@ -153,7 +161,8 @@ export default {
   components: {
     ProcurementMetrics1,
     ProcurementCharts2,
-    ProcurementTable3
+    ProcurementTable3,
+    ProjectProfileCard
   },
   data() {
     return {
@@ -165,15 +174,26 @@ export default {
       selectedProjectId: null,
       selectedCurrency: 'IDR',
       exchangeRates: null,
-      procurementData: parseProcurementData([])
+      procurementData: parseProcurementData([]),
+      projectProfile: null
     }
   },
   computed: {
+    isAllProjects() {
+      return (this.$route.query.id || this.selectedProjectId) === 'all';
+    },
+    showProfile() {
+      return !this.isAllProjects && !!this.projectProfile;
+    },
     selectedProject() {
       if (!this.projects || this.projects.length === 0) return null;
       const currentId = this.$route.query.id || this.selectedProjectId;
-      if (!currentId) return this.projects[0];
+      if (!currentId || currentId === 'all') return currentId === 'all' ? null : this.projects[0];
       return this.projects.find(p => String(p.id) === String(currentId) || p.spreadsheet_id === currentId) || this.projects[0];
+    },
+    effectiveMasterProjectId() {
+      if (this.isAllProjects) return this.projects.length > 0 ? this.projects[0].id : 1;
+      return this.selectedProjectId || (this.selectedProject ? this.selectedProject.id : 1);
     },
     projectMonitoringLink() {
       const id = this.resolveEffectiveId();
@@ -252,10 +272,15 @@ export default {
             }).reduce((a, c) => a + (Number(c.nilaiRab) || Number(c.realisasi) || 0), 0),
             overdue: convertedItems.filter(i => String(i.status || '').toLowerCase().includes('overdue')).reduce((a, c) => a + (Number(c.nilaiRab) || Number(c.realisasi) || 0), 0)
           },
-          jenisBreakdown: {
-            barang: convertedItems.filter(i => String(i.jenis || '').toLowerCase().includes('barang')).length,
-            jasa: convertedItems.filter(i => String(i.jenis || '').toLowerCase().includes('jasa')).length
-          }
+          jenisBreakdown: (() => {
+            const norm = (v) => String(v || '').toLowerCase();
+            const isCombo = (j) => j.includes('&') || (j.includes('barang') && j.includes('jasa'));
+            return {
+              barang: convertedItems.filter(i => { const j = norm(i.jenis); return j.includes('barang') && !isCombo(j); }).length,
+              jasa: convertedItems.filter(i => { const j = norm(i.jenis); return j.includes('jasa') && !isCombo(j); }).length,
+              barangJasa: convertedItems.filter(i => isCombo(norm(i.jenis))).length
+            };
+          })()
         }
       };
     }
@@ -299,7 +324,9 @@ export default {
         const res = await axios.get('http://127.0.0.1:8000/api/projects');
         this.projects = res.data?.data || [];
         const queryId = this.$route.query.id;
-        if (queryId) {
+        if (queryId === 'all') {
+          this.selectedProjectId = 'all';
+        } else if (queryId) {
           const match = this.projects.find(p => String(p.id) === String(queryId) || p.spreadsheet_id === queryId);
           if (match) this.selectedProjectId = match.id;
         } else if (this.projects.length > 0) {
@@ -346,6 +373,21 @@ export default {
         updateRecursive(this.procurementData.items);
       }
     },
+    onItemDeleted({ no }) {
+      if (!this.procurementData || !Array.isArray(this.procurementData.items)) return;
+      const target = String(no);
+      const removeRecursive = (items) => {
+        for (let i = items.length - 1; i >= 0; i--) {
+          const itNo = String(items[i].no);
+          if (itNo === target || itNo.startsWith(target + '.')) {
+            items.splice(i, 1);
+          } else if (items[i].children && items[i].children.length > 0) {
+            removeRecursive(items[i].children);
+          }
+        }
+      };
+      removeRecursive(this.procurementData.items);
+    },
     async fetchData(isSilent = false) {
       if (!isSilent) this.isLoading = true;
       this.errorMessage = '';
@@ -353,6 +395,8 @@ export default {
         const idParam = this.resolveEffectiveId();
         const response = await axios.get(`http://127.0.0.1:8000/api/procurement-monitoring?id=${idParam}&t=${Date.now()}`);
         const rows = response.data?.data || [];
+        const prof = response.data?.profile || null;
+        this.projectProfile = prof ? { ...prof, type: response.data?.project?.type || null } : null;
         if (rows.length > 0) {
           this.procurementData = parseProcurementData(rows);
         }

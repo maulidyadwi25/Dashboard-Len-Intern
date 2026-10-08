@@ -85,6 +85,14 @@ export function parseProcurementData(rawData) {
         jenis: parseText(row[7] || 'Barang'), // H
         paymentType: parseText(row[8]), // I
         procPolicy: parseText(row[9]), // J
+        noHps: parseText(row[10]), // K (HPS)
+        tanggalHps: parseText(row[11]), // L (Tanggal HPS)
+        rks: parseText(row[12]), // M (RKS)
+        tanggalRks: parseText(row[13]), // N (Tanggal RKS)
+        picOme: parseText(row[14]), // O (OME / PIC)
+        noPr: parseText(row[15]), // P (NO PR)
+        procOps: parseText(row[16]), // Q (PROC. OPS)
+        noPo: parseText(row[17]), // R (NO PO)
 
         // Keuangan & Kontrak
         kontrakStatus: parseText(row[18]), // S
@@ -185,10 +193,15 @@ export function parseProcurementData(rawData) {
         completed: items.filter(i => i.status.toLowerCase().includes('completed') || i.status.toLowerCase().includes('done')).reduce((a, c) => a + c.nilaiRab, 0),
         overdue: items.filter(i => i.status.toLowerCase().includes('overdue')).reduce((a, c) => a + c.nilaiRab, 0)
       },
-      jenisBreakdown: {
-        barang: items.filter(i => i.jenis.toLowerCase().includes('barang')).length,
-        jasa: items.filter(i => i.jenis.toLowerCase().includes('jasa')).length
-      }
+      jenisBreakdown: (() => {
+        const norm = (v) => String(v || '').toLowerCase();
+        const isCombo = (j) => j.includes('&') || (j.includes('barang') && j.includes('jasa'));
+        return {
+          barang: items.filter(i => { const j = norm(i.jenis); return j.includes('barang') && !isCombo(j); }).length,
+          jasa: items.filter(i => { const j = norm(i.jenis); return j.includes('jasa') && !isCombo(j); }).length,
+          barangJasa: items.filter(i => isCombo(norm(i.jenis))).length
+        };
+      })()
     }
   };
 }

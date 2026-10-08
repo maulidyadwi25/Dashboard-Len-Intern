@@ -7,6 +7,7 @@ use App\Models\GanttActivity;
 use App\Models\Procurement;
 use App\Models\MasterProject;
 use App\Models\ProjectLink;
+use App\Models\ProjectProfile;
 use App\Models\SystemSync;
 use App\Services\CurrencyService;
 use App\Services\GoogleSheetSyncService;
@@ -25,7 +26,7 @@ class ProjectController extends Controller
     {
         return response()->json([
             'status' => 'success',
-            'data' => MasterProject::select('id', 'project_name', 'project_code', 'spreadsheet_id', 'description')->get(),
+            'data' => MasterProject::select('id', 'project_name', 'type', 'project_code', 'spreadsheet_id', 'description')->get(),
         ]);
     }
 
@@ -82,10 +83,12 @@ class ProjectController extends Controller
                 'project' => $project ? [
                     'id' => $project->id,
                     'project_name' => $project->project_name,
+                    'type' => $project->type,
                     'project_code' => $project->project_code,
                     'spreadsheet_id' => $project->spreadsheet_id,
                     'description' => $project->description,
                 ] : null,
+                'profile' => $projectId ? (ProjectProfile::where('master_project_id', $projectId)->where('type', 'progress_revenue')->first() ?? ProjectProfile::where('master_project_id', $projectId)->first()) : null,
                 'data' => $record->data ?? [],
                 'last_synced_at' => $record->last_synced_at?->toIso8601String(),
             ], 200)
@@ -135,10 +138,12 @@ class ProjectController extends Controller
                 'project' => $project ? [
                     'id' => $project->id,
                     'project_name' => $project->project_name,
+                    'type' => $project->type,
                     'project_code' => $project->project_code,
                     'spreadsheet_id' => $project->spreadsheet_id,
                     'description' => $project->description,
                 ] : null,
+                'profile' => $projectId ? (ProjectProfile::where('master_project_id', $projectId)->where('type', 'procurement')->first() ?? ProjectProfile::where('master_project_id', $projectId)->first()) : null,
                 'data' => $data,
                 'exchange_rates' => $exchangeRates,
                 'last_synced_at' => $record->last_synced_at?->toIso8601String(),
@@ -292,6 +297,52 @@ class ProjectController extends Controller
             'sheet_written' => $sheetWritten,
             'db_updated' => (bool) $procurement,
             'sheet_value' => $sheetValue,
+        ]);
+    }
+
+    public function destroyProcurement(Request $request)
+    {
+        $request->validate([
+            'master_project_id' => 'required',
+            'no' => 'required|string',
+        ]);
+
+        $mp = MasterProject::find($request->master_project_id)
+            ?? MasterProject::where('spreadsheet_id', $request->master_project_id)->first()
+            ?? MasterProject::first();
+        $projectId = $mp?->id ?? (int) $request->master_project_id;
+        $no = trim((string) $request->no);
+
+        // Hapus baris + anak-anaknya (no = X atau X.*) dari tabel procurements
+        $deleted = Procurement::where('master_project_id', $projectId)
+            ->where(function ($q) use ($no) {
+                $q->where('no', $no)->orWhere('no', 'like', $no . '.%');
+            })
+            ->delete();
+
+        // Hapus juga dari cache ProjectLink.data agar GET langsung bersih
+        $link = ProjectLink::where('master_project_id', $projectId)
+            ->where('sheet_key', 'procurement')
+            ->first()
+            ?? ProjectLink::where('master_project_id', $projectId)
+                ->where('sheet_name', 'like', '%Procurement%')
+                ->first();
+
+        if ($link && is_array($link->data)) {
+            $rows = array_values(array_filter($link->data, function ($r) use ($no) {
+                $cellNo = trim((string) ($r[0] ?? ''));
+                return $cellNo !== '' && $cellNo !== $no && ! str_starts_with($cellNo, $no . '.');
+            }));
+            $link->data = $rows;
+            $link->row_count = count($rows);
+            $link->save();
+        }
+
+        // Sheet milik mentor tidak disentuh; sync penuh berikutnya akan memunculkan lagi baris ini
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Deleted',
+            'deleted' => $deleted,
         ]);
     }
 }

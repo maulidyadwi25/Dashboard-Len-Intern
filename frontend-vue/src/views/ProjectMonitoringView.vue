@@ -13,8 +13,9 @@
             @change="onProjectChange"
             class="bg-transparent text-xs font-bold text-gray-800 focus:outline-none cursor-pointer"
           >
+            <option value="all">All Projects</option>
             <option v-for="p in projects" :key="p.id" :value="p.id">
-              {{ p.project_name }} ({{ p.project_code }})
+              {{ p.type ? '[' + p.type + '] ' : '' }}{{ p.project_name }} ({{ p.project_code }})
             </option>
           </select>
         </div>
@@ -77,6 +78,9 @@
           @update:description="projectDescription = $event"
           :key="(projectInfo.overallProgress || '') + '-' + (projectInfo.spiValue || '')" 
         />
+        <!-- Project Profile disembunyikan sementara
+        <ProjectProfileCard v-if="showProfile" :profile="projectProfile" />
+        -->
         <GanttChart :gantt-data="ganttData" />
       </template>
     </div>
@@ -92,12 +96,14 @@
 import axios from 'axios';
 import { parseProjectHeader, parseGanttChartData } from '../utils/projectParser';
 import ProjectHeader from '../components/Header/ProjectHeader.vue';
+import ProjectProfileCard from '../components/Header/ProjectProfileCard.vue';
 import GanttChart from '../components/Monitoring/GanttChart.vue';
 
 export default {
   name: 'ProjectMonitoringView',
   components: {
     ProjectHeader,
+    ProjectProfileCard,
     GanttChart
   },
   data() {
@@ -112,13 +118,20 @@ export default {
       ganttData: { months: [], activities: [] },
       projectId: null,
       projectDescription: '',
+      projectProfile: null,
     };
   },
   computed: {
+    isAllProjects() {
+      return (this.$route.query.id || this.selectedProjectId) === 'all';
+    },
+    showProfile() {
+      return !this.isAllProjects && !!this.projectProfile;
+    },
     selectedProject() {
       if (!this.projects || this.projects.length === 0) return null;
       const currentId = this.$route.query.id || this.selectedProjectId;
-      if (!currentId) return this.projects[0];
+      if (!currentId || currentId === 'all') return currentId === 'all' ? null : this.projects[0];
       return this.projects.find(p => String(p.id) === String(currentId) || p.spreadsheet_id === currentId) || this.projects[0];
     },
     projectMonitoringLink() {
@@ -165,7 +178,9 @@ export default {
         const res = await axios.get('http://127.0.0.1:8000/api/projects');
         this.projects = res.data?.data || [];
         const queryId = this.$route.query.id;
-        if (queryId) {
+        if (queryId === 'all') {
+          this.selectedProjectId = 'all';
+        } else if (queryId) {
           const match = this.projects.find(p => String(p.id) === String(queryId) || p.spreadsheet_id === queryId);
           if (match) this.selectedProjectId = match.id;
         } else if (this.projects.length > 0) {
@@ -205,6 +220,8 @@ export default {
         });
         const rows = response.data?.data || [];
         const project = response.data?.project || null;
+        const prof = response.data?.profile || null;
+        this.projectProfile = prof ? { ...prof, type: project?.type || null } : null;
         if (rows.length > 0) {
           const parsedGantt = parseGanttChartData(rows);
           this.ganttData = { ...parsedGantt };

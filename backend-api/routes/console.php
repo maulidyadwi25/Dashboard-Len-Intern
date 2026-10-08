@@ -12,7 +12,7 @@ Artisan::command('inspire', function () {
 
 Schedule::command('sheets:sync')->everyFiveMinutes();
 
-Artisan::command('project:add {spreadsheet_id} {--name=} {--code=} {--description=}', function ($spreadsheetId, GoogleSheetSyncService $syncService) {
+Artisan::command('project:add {spreadsheet_id} {--name=} {--code=} {--type=} {--description=}', function ($spreadsheetId, GoogleSheetSyncService $syncService) {
     if (preg_match('/\/d\/([a-zA-Z0-9-_]+)/', $spreadsheetId, $matches)) {
         $spreadsheetId = $matches[1];
     }
@@ -32,9 +32,9 @@ Artisan::command('project:add {spreadsheet_id} {--name=} {--code=} {--descriptio
     $project = MasterProject::create([
         'project_name' => $projectName,
         'project_code' => $projectCode,
+        'type' => $this->option('type'),
         'spreadsheet_id' => $spreadsheetId,
         'description' => $this->option('description'),
-        'last_synced_at' => now(),
     ]);
 
     $this->info("✓ Master Project berhasil didaftarkan [ID: {$project->id}]!");

@@ -6,6 +6,7 @@ use App\Models\GanttActivity;
 use App\Models\Procurement;
 use App\Models\MasterProject;
 use App\Models\ProjectLink;
+use App\Models\ProjectProfile;
 use App\Models\SystemSync;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -214,6 +215,8 @@ class GoogleSheetSyncService
 
                 $this->populateGanttActivities($rows, $project->id);
 
+                $this->populateProjectProfile($rows, $project->id, 'progress_revenue');
+
                 SystemSync::updateOrCreate(
                     ['key' => 'progress_revenue'],
                     ['last_synced_at' => now()]
@@ -285,6 +288,22 @@ class GoogleSheetSyncService
                 );
 
                 $this->populateProcurements($rows, $targetProject->id);
+
+                // Header sheet procurement: "Nama Proyek" + "Nilai Kontrak" (nilai di kolom C)
+                $procName = trim((string) ($rows[1][2] ?? ''));
+                $procContractRaw = trim((string) ($rows[2][2] ?? ''));
+                $procContract = is_numeric($procContractRaw)
+                    ? number_format((float) $procContractRaw, 0, '', ',')
+                    : ($procContractRaw !== '' ? $procContractRaw : null);
+                $sibling = ProjectProfile::where('master_project_id', $targetProject->id)
+                    ->where('type', 'progress_revenue')
+                    ->first();
+                $this->populateProjectProfile($rows, $targetProject->id, 'procurement', [
+                    'project_name' => $procName !== '' ? $procName : null,
+                    'contract_value' => $procContract !== '' ? $procContract : null,
+                    'pimpro_name' => $sibling?->pimpro_name,
+                    'report_pic' => $sibling?->report_pic,
+                ]);
 
                 SystemSync::updateOrCreate(
                     ['key' => 'procurement'],
@@ -361,6 +380,34 @@ class GoogleSheetSyncService
         }
 
         return MasterProject::updateOrCreate(['project_code' => $projectCode], $attrs);
+    }
+
+    protected function populateProjectProfile(array $rows, int $projectId, string $type, array $overrides = []): void
+    {
+        // Baris header sheet "2. Progress & Revenue": label di kolom A, nilai di kolom C
+        $get = function (string $label) use ($rows): ?string {
+            foreach ($rows as $row) {
+                $key = strtolower(trim($row[0] ?? ''));
+                if ($key === strtolower($label)) {
+                    $val = trim((string) ($row[2] ?? ''));
+                    return $val !== '' ? $val : null;
+                }
+            }
+            return null;
+        };
+
+        ProjectProfile::updateOrCreate(
+            ['master_project_id' => $projectId, 'type' => $type],
+            array_merge(
+                [
+                    'project_name' => $get('nama proyek'),
+                    'pimpro_name' => $get('nama pimpro'),
+                    'report_pic' => $get('penanggungjawab report'),
+                    'contract_value' => $get('nilai kontrak'),
+                ],
+                $overrides
+            )
+        );
     }
 
     protected function populateGanttActivities(array $rows, int $projectId): void
@@ -518,9 +565,23 @@ class GoogleSheetSyncService
                 'no' => $no,
                 'name' => $name,
                 'vendor' => trim((string) ($row[2] ?? '-')),
+                'target_tgl' => trim((string) ($row[3] ?? '-')),
+                'jenis' => trim((string) ($row[7] ?? '-')),
+                'payment_type' => trim((string) ($row[8] ?? '-')),
+                'proc_policy' => trim((string) ($row[9] ?? '-')),
+                'no_hps' => trim((string) ($row[10] ?? '-')),
+                'tanggal_hps' => trim((string) ($row[11] ?? '-')),
+                'rks' => trim((string) ($row[12] ?? '-')),
+                'tanggal_rks' => trim((string) ($row[13] ?? '-')),
+                'pic_ome' => trim((string) ($row[14] ?? '-')),
+                'no_pr' => trim((string) ($row[15] ?? '-')),
+                'proc_ops' => trim((string) ($row[16] ?? '-')),
+                'no_po' => trim((string) ($row[17] ?? '-')),
+                'kontrak_status' => trim((string) ($row[18] ?? '-')),
                 'nilai_rab' => $parseNumber($row[19] ?? 0),
                 'realisasi' => $parseNumber($row[20] ?? 0),
                 'mata_uang' => trim((string) ($row[21] ?? 'IDR')),
+                'due_date' => trim((string) ($row[23] ?? '-')),
                 'status' => $userEdit['status'] ?? trim((string) ($row[4] ?? 'In Progress')),
                 'progress' => $userEdit['progress'] ?? trim((string) ($row[5] ?? '-')),
                 'priority' => $userEdit['priority'] ?? $sheetPriority,

@@ -15,6 +15,7 @@ class MasterProject extends Model
     protected $fillable = [
         'project_code',
         'project_name',
+        'type',
         'spreadsheet_id',
         'description',
     ];

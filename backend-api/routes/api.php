@@ -10,3 +10,4 @@ Route::match(['get', 'post'], '/sheets/sync', [ProjectController::class, 'syncSh
 Route::get('/database/stats', [ProjectController::class, 'getDatabaseStats']);
 Route::post('/description', [ProjectController::class, 'updateDescription']);
 Route::post('/procurements/update', [ProjectController::class, 'updateProcurement']);
+Route::delete('/procurements', [ProjectController::class, 'destroyProcurement']);
