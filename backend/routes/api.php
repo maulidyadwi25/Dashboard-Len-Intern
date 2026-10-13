@@ -3,7 +3,9 @@
 use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\InternSheetController;
 use App\Http\Controllers\ProcurementController;
+use App\Http\Controllers\ProgressRevenueController;
 use App\Http\Controllers\ProjectDashboardController;
+use App\Http\Controllers\WbsController;
 use App\Models\MasterProject;
 use App\Services\GoogleSheetsService;
 use Illuminate\Http\Request;
@@ -19,11 +21,23 @@ Route::get('/currency/rates', [CurrencyController::class, 'getRates']);
 Route::get('/procurement', [ProcurementController::class, 'index']);
 Route::post('/procurement/sync', [ProcurementController::class, 'sync']);
 Route::patch('/procurement/{id}/start-date', [ProcurementController::class, 'updateStartDate']);
-Route::patch('/procurement/{id}/start-date', [ProcurementController::class, 'updateStartDate']);
 
-// 3-Tier Multi-Spreadsheet Project Dashboard
+// Project Dashboard & Sync
 Route::get('/projects/{id}/dashboard', [ProjectDashboardController::class, 'show']);
 Route::post('/projects/{id}/sync', [ProjectDashboardController::class, 'sync']);
+
+// Progress & Revenue
+Route::get('/projects/{id}/progress-revenue', [ProgressRevenueController::class, 'show']);
+
+// WBS & Gantt
+Route::get('/projects/{id}/wbs', [WbsController::class, 'show']);
+Route::get('/projects/{id}/wbs/weekly', [WbsController::class, 'weekly']);
+Route::get('/projects/{id}/wbs/week-summary', [WbsController::class, 'weekSummary']);
+Route::get('/projects/{id}/wbs/ai-summary', [WbsController::class, 'getAiSummary']);
+Route::post('/projects/{id}/wbs/ai-summary', [WbsController::class, 'generateAiSummary']);
+Route::put('/projects/{id}/wbs/ai-summary', [WbsController::class, 'updateAiSummary']);
+Route::put('/projects/{id}/wbs/{wbs_no}/progress', [WbsController::class, 'updateProgress']);
+Route::post('/projects/{id}/wbs/sync', [WbsController::class, 'sync']);
 
 // Cronjob Sync Route
 Route::get('/cron/sync-sheets', function (Request $request, GoogleSheetsService $sheets) {
@@ -35,10 +49,7 @@ Route::get('/cron/sync-sheets', function (Request $request, GoogleSheetsService 
     }
 
     try {
-        // Ambil semua proyek yang memiliki spreadsheet aktif di Tier 2
-        $projects = MasterProject::whereHas('spreadsheets', function ($q) {
-            $q->where('is_active', true);
-        })->get();
+        $projects = MasterProject::where('is_active', true)->get();
 
         if ($projects->isEmpty()) {
             return response()->json([

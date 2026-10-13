@@ -28,12 +28,11 @@ class SyncGoogleSheet extends Command
 
         try {
             $masterProjects = MasterProject::query()
-                ->whereHas('spreadsheets', fn ($q) => $q->where('is_active', true))
+                ->where('is_active', true)
                 ->get();
 
             if ($masterProjects->isEmpty()) {
-                $this->warn('Belum ada master project aktif. Menggunakan spreadsheet dari konfigurasi lama.');
-                $sheets->syncSheetToDatabase();
+                $this->warn('Belum ada master project aktif.');
             } else {
                 foreach ($masterProjects as $masterProject) {
                     $this->info("Memeriksa {$masterProject->project_name}...");

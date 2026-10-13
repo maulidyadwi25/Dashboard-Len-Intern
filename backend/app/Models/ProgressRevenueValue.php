@@ -5,21 +5,26 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ProjectSpreadsheet extends Model
+class ProgressRevenueValue extends Model
 {
     protected $fillable = [
         'master_project_id',
-        'spreadsheet_id',
-        'type',
-        'title',
-        'is_active',
-        'last_synced_at',
+        'year',
+        'month',
+        'week',
+        'is_baseline',
+        'indicator_key',
+        'value',
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
-        'last_synced_at' => 'datetime',
+        'value' => 'decimal:8',
     ];
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(MasterProject::class, 'master_project_id');
+    }
 
     public function masterProject(): BelongsTo
     {

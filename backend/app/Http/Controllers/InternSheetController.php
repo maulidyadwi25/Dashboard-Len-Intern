@@ -3,12 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\MasterProject;
-use App\Models\Project;
 use App\Services\CurrencyService;
 use App\Services\GoogleSheetsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class InternSheetController extends Controller
 {
@@ -19,28 +17,35 @@ class InternSheetController extends Controller
     {
         try {
             $activeMasterProject = MasterProject::query()
-                ->whereHas('spreadsheets', fn ($q) => $q->where('is_active', true))
-                ->with(['budgetBreakdowns', 'spreadsheets'])
-                ->first() ?: MasterProject::with(['budgetBreakdowns', 'spreadsheets'])->first();
-
-            $project = Project::first();
+                ->where('is_active', true)
+                ->with(['budgetProfile', 'budgetBreakdowns'])
+                ->first() ?: MasterProject::with(['budgetProfile', 'budgetBreakdowns'])->first();
 
             $rates = $currency->getRates();
 
             $breakdowns = $activeMasterProject ? $activeMasterProject->budgetBreakdowns : collect();
+            $profile = $activeMasterProject?->budgetProfile ?: $activeMasterProject?->profile('budget_control') ?: $activeMasterProject?->profile();
 
             $allocatedSum = (float) $breakdowns->sum('total_amount');
             $usedSum = (float) $breakdowns->sum('estimated_need');
             $variance = (float) $breakdowns->sum('variance');
 
+            $namaProyek = $profile?->project_name ?? $activeMasterProject?->project_name ?? 'REFURBISHMENT KRI SIGMA';
+            $kodeProyek = $activeMasterProject?->project_id ?? $activeMasterProject?->project_code ?? 'B-1234567';
+            $namaPimpro = $profile?->nama_pimpro ?? $activeMasterProject?->leader_name ?? 'SETIAJI';
+            $namaClient = $activeMasterProject?->client_name ?? 'TNI';
+            $nilaiKontrak = (float) ($profile?->nilai_kontrak ?? $activeMasterProject?->net_contract_value ?? 0);
+
             $formattedData = [
                 'metadata' => [
-                    'nama_proyek' => $activeMasterProject?->project_name ?? ($project->name ?? 'REFURBISHMENT KRI SIGMA'),
-                    'kode_proyek' => $activeMasterProject?->project_code ?? ($project->project_code ?? 'B-1234567'),
-                    'nama_pimpro' => $activeMasterProject?->leader_name ?? ($project->leader_name ?? 'SETIAJI'),
-                    'nama_client' => $activeMasterProject?->client_name ?? ($project->client_name ?? 'TNI'),
-                    'net_contract_value' => (float) ($activeMasterProject?->net_contract_value ?? ($project->net_contract_value ?? 0)),
-                    'tanggal_update' => $project->sheet_last_updated_at ?? now()->toDateString(),
+                    'nama_proyek' => $namaProyek,
+                    'kode_proyek' => $kodeProyek,
+                    'nama_pimpro' => $namaPimpro,
+                    'nama_pa' => $profile?->nama_PA ?? 'KURNIAWAN',
+                    'nama_client' => $namaClient,
+                    'net_contract_value' => $nilaiKontrak,
+                    'spreadsheet_url' => $activeMasterProject?->spreadsheet_url,
+                    'tanggal_update' => $activeMasterProject?->sheet_updated_at ?? $activeMasterProject?->updated_at?->toDateString() ?? now()->toDateString(),
                 ],
                 'budget_summary' => [
                     'sisa_anggaran_sap' => (float) $breakdowns->sum('sap_remaining'),
@@ -50,21 +55,21 @@ class InternSheetController extends Controller
                     'selisih_variance' => $variance,
                 ],
                 'budget_breakdown' => $breakdowns->map(function ($b, $idx) {
-                    $alloc = (float) $b->allocated_amount;
-                    $used = (float) $b->used_amount;
-                    $sisa = $alloc - $used;
+                    $alloc = (float) ($b->allocated_amount ?? $b->total_amount ?? 0);
+                    $used = (float) ($b->used_amount ?? $b->estimated_need ?? 0);
+                    $sisa = (float) ($b->sap_remaining ?? ($alloc - $used));
 
                     return [
                         'no' => $idx + 1,
                         'wbs_element' => $b->cost_center,
                         'cost_center' => $b->cost_center,
                         'sisa_anggaran_sap' => $sisa,
-                        'wbs_belum_input' => 0.0,
+                        'wbs_belum_input' => (float) ($b->wbs_uninput ?? 0),
                         'total' => $alloc,
                         'allocated_amount' => $alloc,
                         'estimasi_kebutuhan' => $used,
                         'used_amount' => $used,
-                        'selisih_variance' => $sisa,
+                        'selisih_variance' => (float) ($b->variance ?? ($alloc - $used)),
                     ];
                 })->toArray(),
             ];
@@ -96,7 +101,7 @@ class InternSheetController extends Controller
     {
         try {
             $activeMasterProject = MasterProject::query()
-                ->whereHas('spreadsheets', fn ($q) => $q->where('is_active', true))
+                ->where('is_active', true)
                 ->first() ?: MasterProject::first();
 
             if (! $activeMasterProject) {
@@ -107,7 +112,7 @@ class InternSheetController extends Controller
             }
 
             $validated = $request->validate([
-                'project_code' => 'required|string',
+                'project_code' => 'sometimes|string',
                 'budget_summary' => 'sometimes|array',
                 'budget_summary.sisa_anggaran_sap' => 'nullable|numeric',
                 'budget_summary.wbs_belum_input' => 'nullable|numeric',
@@ -138,16 +143,10 @@ class InternSheetController extends Controller
                 }
             }
 
-            // Sync DB ke Google Sheets
-            $syncedToSheet = $sheets->writeDatabaseToSheet($activeMasterProject, $activeMasterProject);
-            if ($syncedToSheet) {
-                Cache::forget('google_sheet_last_update');
-            }
-
             return response()->json([
                 'status' => 'success',
-                'message' => 'Data berhasil diupdate di DB'.($syncedToSheet ? ' dan disinkronkan ke Google Sheet' : ''),
-                'data' => $activeMasterProject->fresh(['budgetBreakdowns']),
+                'message' => 'Data berhasil diupdate di DB',
+                'data' => $activeMasterProject->fresh(['budgetBreakdowns', 'profile']),
             ], 200);
 
         } catch (\Exception $e) {

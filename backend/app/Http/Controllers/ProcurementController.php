@@ -4,13 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\MasterProject;
 use App\Services\GoogleSheetsService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class ProcurementController extends Controller
 {
-    // Injeksi service melalui properti, tidak lagi manual pakai 'new'
     protected GoogleSheetsService $sheetsService;
 
     public function __construct(GoogleSheetsService $sheetsService)
@@ -22,8 +23,9 @@ class ProcurementController extends Controller
     {
         try {
             $activeMasterProject = MasterProject::query()
-                ->whereHas('spreadsheets', fn ($q) => $q->where('is_active', true))
-                ->first() ?: MasterProject::first();
+                ->where('is_active', true)
+                ->with(['profiles', 'procurementProfile'])
+                ->first() ?: MasterProject::with(['profiles', 'procurementProfile'])->first();
 
             if (! $activeMasterProject) {
                 return response()->json([
@@ -67,15 +69,19 @@ class ProcurementController extends Controller
 
             // Compute summary stats for the chart
             $statusCounts = $items->groupBy('status')->map->count();
+            $profile = $activeMasterProject->procurementProfile ?: $activeMasterProject->profile('procurement') ?: $activeMasterProject->profile();
 
             return response()->json([
                 'project' => [
+                    'id' => $activeMasterProject->id,
+                    'project_id' => $activeMasterProject->project_id ?? $activeMasterProject->project_code,
                     'code' => $activeMasterProject->project_code,
-                    'name' => $activeMasterProject->project_name,
-                    'leader_name' => $activeMasterProject->leader_name,
+                    'name' => $profile?->project_name ?? $activeMasterProject->project_name,
+                    'leader_name' => $profile?->nama_pimpro ?? $activeMasterProject->leader_name,
                     'client_name' => $activeMasterProject->client_name,
-                    'analyst_name' => 'KURNIAWAN',
-                    'contract_value' => (float) $activeMasterProject->net_contract_value,
+                    'analyst_name' => $profile?->nama_PA ?? 'KURNIAWAN',
+                    'contract_value' => (float) ($profile?->nilai_kontrak ?? $activeMasterProject->net_contract_value),
+                    'spreadsheet_url' => $activeMasterProject->spreadsheet_url,
                 ],
                 'items' => $items->values(),
                 'procurement_items' => $items->values(),
@@ -97,7 +103,7 @@ class ProcurementController extends Controller
     {
         try {
             $activeMasterProject = MasterProject::query()
-                ->whereHas('spreadsheets', fn ($q) => $q->where('is_active', true))
+                ->where('is_active', true)
                 ->first() ?: MasterProject::first();
 
             if ($activeMasterProject) {
@@ -126,7 +132,7 @@ class ProcurementController extends Controller
             ]);
 
             $activeMasterProject = MasterProject::query()
-                ->whereHas('spreadsheets', fn ($q) => $q->where('is_active', true))
+                ->where('is_active', true)
                 ->first() ?: MasterProject::first();
 
             if (! $activeMasterProject) {
@@ -147,7 +153,7 @@ class ProcurementController extends Controller
 
             // Konversi tanggal dari YYYY-MM-DD (browser) ke DD/MM/YYYY (format database)
             $rawDate = $request->start_date;
-            $convertedDate = \Carbon\Carbon::parse($rawDate)->format('d/m/Y');
+            $convertedDate = Carbon::parse($rawDate)->format('d/m/Y');
 
             // Update menggunakan timestamp untuk mencegah overwrite oleh Google Sheets sync
             $item->update([
@@ -163,7 +169,7 @@ class ProcurementController extends Controller
                 ],
             ]);
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Validasi gagal',

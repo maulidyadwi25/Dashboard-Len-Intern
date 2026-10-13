@@ -10,7 +10,7 @@ const computeToday = (): Date => {
 
 // Reactive today date updated periodically (every minute).
 const todayRef = ref(computeToday());
-let todayInterval: NodeJS.Timer | null = null;
+let todayInterval: ReturnType<typeof setInterval> | null = null;
 
 onMounted(() => {
   // Update todayRef every minute to catch day changes.
@@ -79,7 +79,13 @@ export function useProcurementGantt(
   const filterOptions: string[] = ["All Priority", "High", "Medium", "Low"];
 
   const selectedStatus = ref<string>("");
-  const statusOptions: string[] = ["In Progress", "Warning", "Overdue", "Open", "Done"];
+  const statusOptions: string[] = [
+    "In Progress",
+    "Warning",
+    "Overdue",
+    "Open",
+    "Done",
+  ];
 
   const searchQuery = ref<string>("");
   const sortKey = ref<string>("no");
@@ -255,16 +261,12 @@ export function useProcurementGantt(
 
     if (activeFilter.value !== "All Priority") {
       const p = activeFilter.value.toLowerCase();
-      rawItems = rawItems.filter(
-        (i) => (i.priority || "").toLowerCase() === p,
-      );
+      rawItems = rawItems.filter((i) => (i.priority || "").toLowerCase() === p);
     }
 
     if (selectedStatus.value) {
       const s = selectedStatus.value.toLowerCase();
-      rawItems = rawItems.filter(
-        (i) => (i.status || "").toLowerCase() === s,
-      );
+      rawItems = rawItems.filter((i) => (i.status || "").toLowerCase() === s);
     }
 
     if (searchQuery.value) {
@@ -304,11 +306,22 @@ export function useProcurementGantt(
           priority: item.priority,
         };
         if (groupMap[item.main_no]) {
-          groupMap[item.main_no].subItems!.push(subObj);
           const parent = groupMap[item.main_no];
-          if (targetCol > (parent.startCol ?? 0) + (parent.spanCol ?? 0)) {
-            parent.spanCol = targetCol - (parent.startCol ?? 0) + 2;
-          }
+          parent.subItems!.push(subObj);
+
+          // Parent bar wraps the union of every sub-item bar, not just the last
+          // one seen. Columns are absolute, so the parent may also need to grow
+          // leftwards when a sub-item starts before it.
+          const parentStart = parent.startCol ?? 1;
+          const parentEnd = parentStart + (parent.spanCol ?? 1);
+          const subStart = startColParsed;
+          const subEnd = startColParsed + (subObj.spanCol ?? 1);
+
+          const unionStart = Math.min(parentStart, subStart);
+          const unionEnd = Math.max(parentEnd, subEnd);
+
+          parent.startCol = Math.max(1, unionStart);
+          parent.spanCol = Math.max(1, unionEnd - parent.startCol);
         } else {
           groups.push({
             ...subObj,

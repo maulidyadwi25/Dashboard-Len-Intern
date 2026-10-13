@@ -26,4 +26,11 @@ export const budgetService = {
       start_date: newDate,
     });
   },
+
+  getProgressRevenueData(month = "all") {
+    console.log("[API CALL] getProgressRevenueData with month:", month, typeof month);
+    return api.get("/projects/1/progress-revenue", {
+      params: { month },
+    });
+  },
 };

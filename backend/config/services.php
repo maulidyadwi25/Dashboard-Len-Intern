@@ -34,8 +34,16 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-'google_sheets' => [
-    'spreadsheet_id'   => env('GOOGLE_SPREADSHEET_ID'),
-    'credentials_path' => env('GOOGLE_SHEETS_CREDENTIALS_PATH', 'storage/app/google/serviceAccountIntern.json'),
-],
+
+    'google_sheets' => [
+        'spreadsheet_id' => env('GOOGLE_SPREADSHEET_ID'),
+        'credentials_path' => env('GOOGLE_SHEETS_CREDENTIALS_PATH', 'storage/app/google/serviceAccountIntern.json'),
+    ],
+
+    'ai' => [
+        'base_url' => env('AI_BASE_URL'),
+        'model' => env('AI_MODEL', 'gpt-4o-mini'),
+        'api_key' => env('AI_API_KEY'),
+        'timeout' => env('AI_TIMEOUT', 30),
+    ],
 ];

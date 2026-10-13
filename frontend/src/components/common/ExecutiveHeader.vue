@@ -1,14 +1,16 @@
 <script setup>
-import { ref } from "vue";
+import { computed } from "vue";
+import { useRoute } from "vue-router";
 import { LayoutDashboard, ChevronDown } from "lucide-vue-next";
 
-const activeTab = ref("Project Monitoring");
-const tabs = [
-  "Summary",
-  "Division Monitoring",
-  "Project Monitoring",
-  "Procurement",
-];
+const route = useRoute();
+
+const activePath = computed(() => route.path);
+
+const linkClass = (path) =>
+  activePath.value === path
+    ? "px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 bg-blue-600 text-white shadow-xs"
+    : "px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60";
 </script>
 
 <template>
@@ -43,15 +45,18 @@ const tabs = [
       >
         <router-link
           to="/budget-monitoring"
-          class="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+          :class="linkClass('/budget-monitoring')"
         >
           Budget Monitoring
         </router-link>
-        <router-link
-          to="/procurement"
-          class="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 bg-blue-600 text-white shadow-xs"
-        >
+        <router-link to="/procurement" :class="linkClass('/procurement')">
           Procurement
+        </router-link>
+        <router-link
+          to="/progress-revenue"
+          :class="linkClass('/progress-revenue')"
+        >
+          Progress &amp; Revenue
         </router-link>
       </nav>
 

@@ -10,12 +10,14 @@ use Illuminate\Http\JsonResponse;
 class ProjectDashboardController extends Controller
 {
     /**
-     * Get aggregate dashboard for a MasterProject along with procurementItems and budgetBreakdowns.
+     * Get aggregate dashboard for a MasterProject along with profile, procurementItems and budgetBreakdowns.
      */
     public function show(int|string $id): JsonResponse
     {
         $project = MasterProject::with([
-            'spreadsheets',
+            'profiles',
+            'budgetProfile',
+            'procurementProfile',
             'procurementItems',
             'budgetBreakdowns',
         ])->find($id);
@@ -34,11 +36,11 @@ class ProjectDashboardController extends Controller
     }
 
     /**
-     * Trigger Multi-Spreadsheet synchronization for a MasterProject.
+     * Trigger synchronization for a MasterProject.
      */
     public function sync(int|string $id, GoogleSheetsService $sheetsService): JsonResponse
     {
-        $project = MasterProject::with('spreadsheets')->find($id);
+        $project = MasterProject::with(['profiles'])->find($id);
 
         if (! $project) {
             return response()->json([
@@ -50,14 +52,16 @@ class ProjectDashboardController extends Controller
         $syncResults = $sheetsService->syncProject($project);
 
         $project->load([
-            'spreadsheets',
+            'profiles',
+            'budgetProfile',
+            'procurementProfile',
             'procurementItems',
             'budgetBreakdowns',
         ]);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Multi-Spreadsheet sync completed.',
+            'message' => 'Project spreadsheet sync completed.',
             'sync_results' => $syncResults,
             'data' => new ProjectDashboardResource($project),
         ], 200);

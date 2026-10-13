@@ -1,11 +1,11 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import ExecutiveHeader from "@/components/project-monitoring/ExecutiveHeader.vue";
-import ProjectSelectorBar from "@/components/project-monitoring/ProjectSelectorBar.vue";
-import ProjectProfileCard from "@/components/project-monitoring/ProjectProfileCard.vue";
-import ProcurementStatusMonitoring from "@/components/project-monitoring/ProcurementStatusMonitoring.vue";
-import ProcurementMetrics from "@/components/project-monitoring/ProcurementMetrics.vue";
-import WbsGanttTimeline from "@/components/project-monitoring/gantt/Index.vue";
+import ExecutiveHeader from "@/components/common/ExecutiveHeader.vue";
+import ProjectSelectorBar from "@/components/common/ProjectSelectorBar.vue";
+import ProjectProfileCard from "@/components/common/ProjectProfileCard.vue";
+import ProcurementStatusMonitoring from "@/components/procurement/ProcurementStatusMonitoring.vue";
+import ProcurementMetrics from "@/components/procurement/ProcurementMetrics.vue";
+import WbsGanttTimeline from "@/components/procurement/gantt/Index.vue";
 import Footer from "@/components/common/Footer.vue";
 import { budgetService } from "@/services/budgetServices";
 import { generateProcurementPdf } from "@/utils/pdfExport";

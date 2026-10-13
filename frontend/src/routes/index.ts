@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import Dashboard from "../pages/BudgetMonitoring.vue";
 import Procurement from "../pages/Procurement.vue";
+import ProgressRevenue from "../pages/ProgressRevenue.vue";
 
 const routes = [
   {
@@ -21,6 +22,11 @@ const routes = [
     path: "/procurement",
     name: "Procurement",
     component: Procurement,
+  },
+  {
+    path: "/progress-revenue",
+    name: "ProgressRevenue",
+    component: ProgressRevenue,
   },
 ];
 
