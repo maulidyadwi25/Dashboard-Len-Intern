@@ -31,7 +31,7 @@ class InternSheetController extends Controller
             $variance = (float) $breakdowns->sum('variance');
 
             $namaProyek = $profile?->project_name ?? $activeMasterProject?->project_name ?? 'REFURBISHMENT KRI SIGMA';
-            $kodeProyek = $activeMasterProject?->project_id ?? $activeMasterProject?->project_code ?? 'B-1234567';
+            $kodeProyek = $activeMasterProject?->project_code ?? 'B-1234567';
             $namaPimpro = $profile?->nama_pimpro ?? $activeMasterProject?->leader_name ?? 'SETIAJI';
             $namaClient = $activeMasterProject?->client_name ?? 'TNI';
             $nilaiKontrak = (float) ($profile?->nilai_kontrak ?? $activeMasterProject?->net_contract_value ?? 0);

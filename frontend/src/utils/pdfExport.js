@@ -392,10 +392,10 @@ export const generateWbsPdf = ({
     }
   };
 
-  // ─── Format bobot as percentage ────────────────────────────────
+  // ─── Format bobot as percentage (stored in 0-100 scale) ───────
   const fmtBobot = (v) => {
     const num = Number(v) || 0;
-    return `${(num * 100).toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`;
+    return `${num.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`;
   };
 
   // ─── Format progress ──────────────────────────────────────────

@@ -29,6 +29,7 @@ yarn-error.log
 /.zed
 /storage/app/google/*.json
 .env
+.env
 .env.local
 node_modules/
 dist/

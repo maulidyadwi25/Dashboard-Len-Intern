@@ -1,17 +1,24 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { FolderKanban, ChevronDown } from 'lucide-vue-next'
+import { useProject } from '@/composables/useProject'
 
-const selectedProject = ref('Radar GCI Infrastructure Phase II (1LC-522UD019)')
-const projects = [
-  'Radar GCI Infrastructure Phase II (1LC-522UD019)',
-  'Naval Radar Modernization Program (2LC-881AB002)',
-  'Cyber Enterprise Security Upgrade (3LC-104XY088)'
-]
+const {
+  activeProjectId,
+  projects,
+  currentProject,
+  fetchProjects,
+  setActiveProjectId,
+} = useProject()
+
 const isOpen = ref(false)
 
+onMounted(() => {
+  fetchProjects()
+})
+
 const selectProject = (proj) => {
-  selectedProject.value = proj
+  setActiveProjectId(proj.id)
   isOpen.value = false
 }
 </script>
@@ -25,7 +32,9 @@ const selectProject = (proj) => {
       >
         <FolderKanban class="w-4 h-4 text-blue-600" />
         <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">PROYEK:</span>
-        <span class="text-xs font-bold text-slate-800">{{ selectedProject }}</span>
+        <span class="text-xs font-bold text-slate-800">
+          {{ currentProject ? `${currentProject.project_name} (${currentProject.project_code})` : 'Memuat Proyek...' }}
+        </span>
         <ChevronDown class="w-4 h-4 text-slate-400 ml-1" />
       </div>
 
@@ -36,15 +45,15 @@ const selectProject = (proj) => {
       >
         <div 
           v-for="p in projects" 
-          :key="p" 
+          :key="p.id" 
           @click="selectProject(p)"
           :class="[
             'px-4 py-2.5 cursor-pointer font-medium hover:bg-blue-50 transition-colors flex items-center justify-between',
-            p === selectedProject ? 'text-blue-600 font-bold bg-blue-50/50' : 'text-slate-700'
+            p.id === activeProjectId ? 'text-blue-600 font-bold bg-blue-50/50' : 'text-slate-700'
           ]"
         >
-          <span>{{ p }}</span>
-          <span v-if="p === selectedProject" class="w-2 h-2 rounded-full bg-blue-600"></span>
+          <span>{{ p.project_name }} ({{ p.project_code }})</span>
+          <span v-if="p.id === activeProjectId" class="w-2 h-2 rounded-full bg-blue-600"></span>
         </div>
       </div>
     </div>

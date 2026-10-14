@@ -1,8 +1,12 @@
 import api from "./api";
 
 export const budgetService = {
-  getDashboardData() {
-    return api.get("/projects/1/dashboard");
+  getProjects() {
+    return api.get("/projects");
+  },
+
+  getDashboardData(projectId) {
+    return api.get(`/projects/${projectId}/dashboard`);
   },
 
   updateDashboardData(payload) {
@@ -27,9 +31,8 @@ export const budgetService = {
     });
   },
 
-  getProgressRevenueData(month = "all") {
-    console.log("[API CALL] getProgressRevenueData with month:", month, typeof month);
-    return api.get("/projects/1/progress-revenue", {
+  getProgressRevenueData(projectId, month = "all") {
+    return api.get(`/projects/${projectId}/progress-revenue`, {
       params: { month },
     });
   },

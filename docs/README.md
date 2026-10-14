@@ -16,7 +16,7 @@ Dokumen halaman yang tersedia:
 
 - [docs/pages/budget-monitoring.md](pages/budget-monitoring.md)
 - [docs/pages/procurement.md](pages/procurement.md)
-- [docs/pages/progress-revenue.md](pages/progress-revenue.md)
+- [docs/pages/progress-revenue.md](pages/progress-revenue.md) — Progress & Revenue, WBS/Gantt, dan ringkasan AI
 
 ## 3. API Documentation
 

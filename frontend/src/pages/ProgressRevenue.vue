@@ -15,7 +15,10 @@ import Footer from "@/components/common/Footer.vue";
 import { budgetService } from "@/services/budgetServices";
 import { wbsService } from "@/services/wbsService.js";
 import { useWbs } from "@/composables/useWbs";
+import { useProject } from "@/composables/useProject";
 import { generateWbsPdf } from "@/utils/pdfExport";
+
+const { activeProjectId } = useProject();
 
 const {
   summary: wbsSummary,
@@ -35,7 +38,7 @@ const {
   clearProgressError,
   sync: syncWbs,
   saveProgressBatch,
-} = useWbs();
+} = useWbs(activeProjectId);
 
 const selectedMonth = ref("all");
 const weekSummary = ref({ week_label: "", items: [] });
@@ -94,11 +97,17 @@ onBeforeRouteLeave(() => {
 });
 
 async function loadWeekSummary() {
+  if (activeProjectId.value === null) {
+    weekSummary.value = { week_label: "", items: [] };
+    weekSummaryLoading.value = false;
+    return;
+  }
+
   weekSummaryLoading.value = true;
   weekSummaryError.value = "";
 
   try {
-    const response = await wbsService.getWeekSummary();
+    const response = await wbsService.getWeekSummary(activeProjectId.value);
     weekSummary.value = response.data?.data ?? { week_label: "", items: [] };
   } catch (error) {
     weekSummaryError.value =
@@ -107,8 +116,6 @@ async function loadWeekSummary() {
     weekSummaryLoading.value = false;
   }
 }
-
-void loadWeekSummary();
 
 const isLoading = ref(true);
 const errorMessage = ref("");
@@ -120,11 +127,25 @@ const payload = ref({
 });
 
 const fetchProgressRevenue = async () => {
+  if (activeProjectId.value === null) {
+    payload.value = {
+      project: null,
+      baseline: null,
+      periods: [],
+      indicators: [],
+    };
+    isLoading.value = false;
+    return;
+  }
+
   isLoading.value = true;
   errorMessage.value = "";
 
   try {
-    const res = await budgetService.getProgressRevenueData("all");
+    const res = await budgetService.getProgressRevenueData(
+      activeProjectId.value,
+      "all",
+    );
     const body = res.data?.data ?? res.data ?? {};
 
     payload.value = {
@@ -149,7 +170,14 @@ const fetchProgressRevenue = async () => {
   }
 };
 
-fetchProgressRevenue();
+watch(activeProjectId, (projectId) => {
+  if (projectId === null) return;
+  void fetchProgressRevenue();
+  void loadWeekSummary();
+});
+
+void fetchProgressRevenue();
+void loadWeekSummary();
 
 const formatContractValue = (value) => {
   if (value === null || value === undefined || value === "") return "-";
@@ -307,7 +335,7 @@ function downloadWbsPdf() {
           />
           <div class="grid items-start gap-4 xl:grid-cols-2">
             <WbsDeviationPanel :items="weekSummary.items" />
-            <WbsAiSummary />
+            <WbsAiSummary :project-id="activeProjectId" />
           </div>
         </section>
       </section>

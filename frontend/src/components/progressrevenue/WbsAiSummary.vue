@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { Check, LoaderCircle, Pencil, RefreshCw, X } from "lucide-vue-next";
 import { wbsService } from "../../services/wbsService.js";
 
@@ -29,9 +29,9 @@ interface SummaryError extends Error {
 
 const props = withDefaults(
   defineProps<{
-    projectId?: number | string;
+    projectId?: number | string | null;
   }>(),
-  { projectId: 1 },
+  { projectId: null },
 );
 
 const summary = ref<AiSummary | null>(null);
@@ -74,12 +74,12 @@ function errorMessageFor(error: unknown): string {
   return requestError.message || "Terjadi kesalahan saat memuat ringkasan WBS.";
 }
 
-async function loadSummary(): Promise<void> {
+async function loadSummary(projectId: number | string): Promise<void> {
   loading.value = true;
   errorMessage.value = "";
 
   try {
-    const response = await wbsService.getAiSummary(props.projectId);
+    const response = await wbsService.getAiSummary(projectId);
     summary.value = response.data?.data ?? null;
   } catch (error) {
     errorMessage.value = errorMessageFor(error);
@@ -196,7 +196,20 @@ async function generateSummary(): Promise<void> {
   }
 }
 
-onMounted(loadSummary);
+watch(
+  () => props.projectId,
+  (projectId) => {
+    summary.value = null;
+    errorMessage.value = "";
+    syncWarning.value = "";
+    if (projectId === null || projectId === undefined) {
+      loading.value = false;
+      return;
+    }
+    void loadSummary(projectId);
+  },
+  { immediate: true },
+);
 </script>
 
 <template>

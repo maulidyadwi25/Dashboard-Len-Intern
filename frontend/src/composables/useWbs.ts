@@ -1,5 +1,5 @@
-import { computed, ref, watch } from "vue";
-import { DEFAULT_WBS_PROJECT_ID, wbsService } from "../services/wbsService.js";
+import { computed, ref, toValue, watch, type MaybeRefOrGetter } from "vue";
+import { wbsService } from "../services/wbsService.js";
 import {
   buildTree,
   flattenVisible,
@@ -57,8 +57,10 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unable to load WBS data.";
 }
 
-export function useWbs(projectId: number | string = DEFAULT_WBS_PROJECT_ID) {
-  // Project ID 1 is a temporary default until project selection is connected.
+export function useWbs(
+  projectIdInput: MaybeRefOrGetter<number | string | null> = null,
+) {
+  const currentProjectId = computed(() => toValue(projectIdInput));
   const items = ref<WbsItem[]>([]);
   const project = ref<WbsResponse["data"]["project"] | null>(null);
   const summary = ref<WbsSummary>({ ...EMPTY_SUMMARY });
@@ -88,7 +90,9 @@ export function useWbs(projectId: number | string = DEFAULT_WBS_PROJECT_ID) {
   }
 
   async function fetchWbs(): Promise<void> {
-    const response = (await wbsService.getWbs(projectId)) as {
+    if (currentProjectId.value === null) return;
+
+    const response = (await wbsService.getWbs(currentProjectId.value)) as {
       data?: WbsResponse;
     };
     const payload = response.data?.data;
@@ -98,7 +102,12 @@ export function useWbs(projectId: number | string = DEFAULT_WBS_PROJECT_ID) {
   }
 
   async function fetchWeekly(month: MonthFilter): Promise<void> {
-    const response = (await wbsService.getWbsWeekly(projectId, month)) as {
+    if (currentProjectId.value === null) return;
+
+    const response = (await wbsService.getWbsWeekly(
+      currentProjectId.value,
+      month,
+    )) as {
       data?: WeeklyResponse;
     };
     periods.value = response.data?.data?.periods ?? [];
@@ -106,6 +115,17 @@ export function useWbs(projectId: number | string = DEFAULT_WBS_PROJECT_ID) {
   }
 
   async function reload(): Promise<boolean> {
+    if (currentProjectId.value === null) {
+      items.value = [];
+      project.value = null;
+      summary.value = { ...EMPTY_SUMMARY };
+      periods.value = [];
+      weeklyValues.value = [];
+      loading.value = false;
+      weeklyLoading.value = false;
+      return false;
+    }
+
     loading.value = true;
     error.value = null;
 
@@ -133,7 +153,7 @@ export function useWbs(projectId: number | string = DEFAULT_WBS_PROJECT_ID) {
     error.value = null;
 
     try {
-      await wbsService.syncWbs(projectId);
+      await wbsService.syncWbs(currentProjectId.value);
       return await reload();
     } catch (requestError) {
       setError(requestError);
@@ -155,7 +175,7 @@ export function useWbs(projectId: number | string = DEFAULT_WBS_PROJECT_ID) {
 
       try {
         await wbsService.updateWbsProgress(
-          projectId,
+          currentProjectId.value,
           change.wbsNo,
           change.percent,
         );
@@ -176,6 +196,12 @@ export function useWbs(projectId: number | string = DEFAULT_WBS_PROJECT_ID) {
     return results;
   }
 
+  watch(currentProjectId, (projectId) => {
+    progressErrors.value = {};
+    expanded.value = {};
+    void reload();
+  });
+
   watch(selectedMonth, async (month) => {
     weeklyLoading.value = true;
     error.value = null;
@@ -189,7 +215,7 @@ export function useWbs(projectId: number | string = DEFAULT_WBS_PROJECT_ID) {
     }
   });
 
-  void reload();
+  if (currentProjectId.value !== null) void reload();
 
   return {
     items,

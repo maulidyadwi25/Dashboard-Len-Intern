@@ -74,8 +74,8 @@ class ProcurementController extends Controller
             return response()->json([
                 'project' => [
                     'id' => $activeMasterProject->id,
-                    'project_id' => $activeMasterProject->project_id ?? $activeMasterProject->project_code,
                     'code' => $activeMasterProject->project_code,
+                    'project_code' => $activeMasterProject->project_code,
                     'name' => $profile?->project_name ?? $activeMasterProject->project_name,
                     'leader_name' => $profile?->nama_pimpro ?? $activeMasterProject->leader_name,
                     'client_name' => $activeMasterProject->client_name,

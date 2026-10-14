@@ -1,16 +1,19 @@
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { budgetService } from "@/services/budgetServices";
 import { generateBudgetPdf } from "@/utils/pdfExport";
 import { useCurrency } from "@/composables/useCurrency";
+import { useProject } from "@/composables/useProject";
 
 import Navbar from "@/components/budget-monitoring/Navbar.vue";
 import Footer from "@/components/common/Footer.vue";
+import ProjectSelectorBar from "@/components/common/ProjectSelectorBar.vue";
 import ProjectHeader from "@/components/budget-monitoring/ProjectHeader.vue";
 import BudgetSummaryCards from "@/components/budget-monitoring/BudgetSummaryCards.vue";
 import BudgetBreakdownTable from "@/components/budget-monitoring/BudgetBreakdownTable.vue";
 
 const { selectedCurrency, exchangeRates, formatCurrency } = useCurrency();
+const { activeProjectId } = useProject();
 
 const isLoading = ref(true);
 const errorMessage = ref("");
@@ -21,11 +24,18 @@ const sheetData = ref({
 });
 
 const fetchDashboardData = async () => {
+  if (activeProjectId.value === null) {
+    isLoading.value = false;
+    return;
+  }
+
   try {
     isLoading.value = true;
     errorMessage.value = "";
 
-    const response = await budgetService.getDashboardData();
+    const response = await budgetService.getDashboardData(
+      activeProjectId.value,
+    );
     const payload = response.data?.data ?? response.data ?? {};
 
     const normalizedSheetData = payload.sheetData ?? {
@@ -39,6 +49,23 @@ const fetchDashboardData = async () => {
       },
       budget_breakdown:
         payload.budget_breakdown ?? payload.budget_breakdowns ?? [],
+    };
+
+    const contractValue = [
+      normalizedSheetData.metadata?.net_contract_value,
+      payload.profiles?.find((profile) => profile.type === "progress_revenue")
+        ?.nilai_kontrak,
+      payload.procurement_profile?.nilai_kontrak,
+      payload.net_contract_value,
+    ]
+      .map(Number)
+      .find((value) => Number.isFinite(value) && value > 0);
+
+    normalizedSheetData.metadata = {
+      ...normalizedSheetData.metadata,
+      net_contract_value:
+        contractValue ??
+        Number(normalizedSheetData.metadata?.net_contract_value ?? 0),
     };
 
     sheetData.value = normalizedSheetData;
@@ -58,6 +85,10 @@ const fetchDashboardData = async () => {
     isLoading.value = false;
   }
 };
+
+watch(activeProjectId, () => {
+  void fetchDashboardData();
+});
 
 onMounted(fetchDashboardData);
 
@@ -98,6 +129,8 @@ const handleDownloadPdf = () => {
   <div class="flex min-h-screen flex-col bg-[#f8fafc] font-sans text-slate-800">
     <Navbar />
     <main class="mx-auto w-full max-w-7xl flex-1 space-y-6 px-6 py-8">
+      <ProjectSelectorBar />
+
       <!-- State Loading -->
       <div v-if="isLoading" class="flex h-64 items-center justify-center">
         <div

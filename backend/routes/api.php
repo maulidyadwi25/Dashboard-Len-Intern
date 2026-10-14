@@ -23,6 +23,7 @@ Route::post('/procurement/sync', [ProcurementController::class, 'sync']);
 Route::patch('/procurement/{id}/start-date', [ProcurementController::class, 'updateStartDate']);
 
 // Project Dashboard & Sync
+Route::get('/projects', [ProjectDashboardController::class, 'index']);
 Route::get('/projects/{id}/dashboard', [ProjectDashboardController::class, 'show']);
 Route::post('/projects/{id}/sync', [ProjectDashboardController::class, 'sync']);
 

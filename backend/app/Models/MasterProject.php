@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class MasterProject extends Model
 {
     protected $fillable = [
-        'project_id',
         'project_code',
         'project_name',
         'client_name',

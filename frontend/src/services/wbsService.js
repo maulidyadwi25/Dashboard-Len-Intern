@@ -1,7 +1,5 @@
 import api from "./api";
 
-export const DEFAULT_WBS_PROJECT_ID = 1;
-
 function withWbsErrorHandling(request) {
   return request().catch((error) => {
     const status = error?.response?.status;
@@ -34,45 +32,45 @@ function withWbsErrorHandling(request) {
 }
 
 export const wbsService = {
-  getWbs(id = DEFAULT_WBS_PROJECT_ID) {
+  getWbs(id) {
     return withWbsErrorHandling(() => api.get(`/projects/${id}/wbs`));
   },
 
-  getWbsWeekly(id = DEFAULT_WBS_PROJECT_ID, month = "all") {
+  getWbsWeekly(id, month = "all") {
     return withWbsErrorHandling(() =>
       api.get(`/projects/${id}/wbs/weekly`, { params: { month } }),
     );
   },
 
-  getWeekSummary(id = DEFAULT_WBS_PROJECT_ID) {
+  getWeekSummary(id) {
     return withWbsErrorHandling(() =>
       api.get(`/projects/${id}/wbs/week-summary`),
     );
   },
 
-  getAiSummary(id = DEFAULT_WBS_PROJECT_ID) {
+  getAiSummary(id) {
     return withWbsErrorHandling(() =>
       api.get(`/projects/${id}/wbs/ai-summary`),
     );
   },
 
-  generateAiSummary(id = DEFAULT_WBS_PROJECT_ID) {
+  generateAiSummary(id) {
     return withWbsErrorHandling(() =>
       api.post(`/projects/${id}/wbs/ai-summary`),
     );
   },
 
-  saveAiSummary(id = DEFAULT_WBS_PROJECT_ID, content) {
+  saveAiSummary(id, content) {
     return withWbsErrorHandling(() =>
       api.put(`/projects/${id}/wbs/ai-summary`, { content }),
     );
   },
 
-  syncWbs(id = DEFAULT_WBS_PROJECT_ID) {
+  syncWbs(id) {
     return withWbsErrorHandling(() => api.post(`/projects/${id}/wbs/sync`));
   },
 
-  updateWbsProgress(id = DEFAULT_WBS_PROJECT_ID, wbsNo, percent) {
+  updateWbsProgress(id, wbsNo, percent) {
     return withWbsErrorHandling(() =>
       api.put(`/projects/${id}/wbs/${encodeURIComponent(wbsNo)}/progress`, {
         percent,

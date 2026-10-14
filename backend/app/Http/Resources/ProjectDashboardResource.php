@@ -103,7 +103,7 @@ class ProjectDashboardResource extends JsonResource
 
         return [
             'id' => $this->id,
-            'project_id' => $this->project_id ?? $this->project_code,
+            'project_id' => $this->project_code,
             'project_code' => $this->project_code,
             'project_name' => $this->project_name,
             'client_name' => $this->client_name,

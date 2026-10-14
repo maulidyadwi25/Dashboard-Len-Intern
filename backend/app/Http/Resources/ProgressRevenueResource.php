@@ -85,7 +85,7 @@ class ProgressRevenueResource extends JsonResource
             return [
                 'id' => $this->resource->id,
                 'client_name' => $this->resource->client_name,
-                'project_code' => $this->resource->project_code ?? $this->resource->project_id,
+                'project_code' => $this->resource->project_code,
                 'project_name' => $this->resource->project_name,
                 'project_lead_name' => $this->resource->leader_name,
                 'contract_value' => (float) ($this->resource->net_contract_value ?? 0),
@@ -96,12 +96,12 @@ class ProgressRevenueResource extends JsonResource
 
         return [
             'id' => $this->resource->id,
-            'client_name' => null,
-            'project_code' => $this->resource->project_code ?? $this->resource->project_id,
-            'project_name' => $profile->project_name,
-            'project_lead_name' => $profile->nama_pimpro,
+            'client_name' => $this->resource->client_name,
+            'project_code' => $this->resource->project_code,
+            'project_name' => $profile->project_name ?? $this->resource->project_name,
+            'project_lead_name' => $profile->nama_pimpro ?? $this->resource->leader_name,
             'report_owner_name' => $profile->nama_PA,
-            'contract_value' => $profile->nilai_kontrak !== null ? (float) $profile->nilai_kontrak : null,
+            'contract_value' => $profile->nilai_kontrak !== null ? (float) $profile->nilai_kontrak : (float) ($this->resource->net_contract_value ?? 0),
             'spreadsheet_url' => $this->resource->spreadsheet_url,
             'synced_at' => $profile->updated_at?->toIso8601String(),
         ];

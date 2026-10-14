@@ -10,6 +10,22 @@ use Illuminate\Http\JsonResponse;
 class ProjectDashboardController extends Controller
 {
     /**
+     * List all active MasterProjects for the project selector.
+     */
+    public function index(): JsonResponse
+    {
+        $projects = MasterProject::query()
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->get(['id', 'project_code', 'project_name']);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $projects,
+        ], 200);
+    }
+
+    /**
      * Get aggregate dashboard for a MasterProject along with profile, procurementItems and budgetBreakdowns.
      */
     public function show(int|string $id): JsonResponse
