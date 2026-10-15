@@ -92,6 +92,57 @@ test('generate ai summary parses fenced json and stores source ai', function () 
         ->and(WbsAiSummary::where('master_project_id', $project->id)->count())->toBe(1);
 });
 
+test('ai request requires Indonesian output and sends localized status labels', function () {
+    $capturedRequest = null;
+    Http::fake(function ($request) use (&$capturedRequest) {
+        $capturedRequest = $request->data();
+
+        return Http::response([
+            'choices' => [[
+                'message' => ['content' => json_encode(wbsAiSummaryValidJson())],
+            ]],
+        ], 200);
+    });
+
+    $project = wbsAiSummaryProject();
+    wbsAiSummaryItem($project, '1.1', ['plan_end_period' => 'Jan W4']);
+    wbsAiSummaryItem($project, '1.2', ['plan_end_period' => 'Jan W1']);
+    wbsAiSummaryItem($project, '1.3', ['plan_end_period' => 'Jan W1']);
+
+    foreach ([
+        ['wbs_no' => '1.1', 'percent' => 40],
+        ['wbs_no' => '1.2', 'percent' => 40],
+        ['wbs_no' => '1.3', 'percent' => 95],
+    ] as $progress) {
+        WbsProgressEntry::create([
+            'master_project_id' => $project->id,
+            'wbs_no' => $progress['wbs_no'],
+            'year' => 2026,
+            'month' => 1,
+            'week' => 2,
+            'percent' => $progress['percent'],
+        ]);
+    }
+
+    app(WbsAiSummaryService::class)->generateForProject($project, true);
+
+    $systemMessage = $capturedRequest['messages'][0]['content'];
+    $userMessage = $capturedRequest['messages'][1]['content'];
+    $repeatedInstruction = 'Instruksi bahasa wajib: Semua nilai teks pada executive_summary, recommendations[].title, recommendations[].detail, dan risks[] WAJIB ditulis dalam bahasa Indonesia. Jangan menyalin istilah bahasa Inggris, kecuali nama WBS. Hanya kunci JSON dan nilai priority high|medium|low yang tetap dalam bahasa Inggris.';
+
+    expect($systemMessage)
+        ->toContain('WAJIB ditulis dalam bahasa Indonesia')
+        ->toContain('Jangan menyalin istilah bahasa Inggris')
+        ->toContain('Terlambat')
+        ->toContain('Kritis')
+        ->toContain('Pekerjaan berjalan sesuai rencana');
+
+    expect(substr($userMessage, -strlen($repeatedInstruction)))->toBe($repeatedInstruction)
+        ->and($userMessage)->toContain('"status":"On Track"')
+        ->toContain('"status":"Terlambat"')
+        ->toContain('"status":"Kritis"');
+});
+
 test('invalid json response returns 502 and keeps previous summary', function () {
     $project = wbsAiSummaryProject();
     WbsAiSummary::create([

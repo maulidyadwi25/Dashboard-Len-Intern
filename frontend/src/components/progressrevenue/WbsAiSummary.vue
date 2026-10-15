@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { Check, LoaderCircle, Pencil, RefreshCw, X } from "lucide-vue-next";
+import {
+  Check,
+  FileText,
+  LoaderCircle,
+  Pencil,
+  RefreshCw,
+  X,
+} from "lucide-vue-next";
 import { wbsService } from "../../services/wbsService.js";
 
 interface Recommendation {
@@ -45,6 +52,16 @@ const confirmManualGenerate = ref(false);
 const executiveSummaryDraft = ref("");
 const recommendationsDraft = ref("");
 const risksDraft = ref("");
+const priorityLabels: Record<string, string> = {
+  high: "Tinggi",
+  medium: "Sedang",
+  low: "Rendah",
+};
+const priorityClasses: Record<string, string> = {
+  high: "bg-error-container text-error",
+  medium: "bg-amber-100 text-amber-900",
+  low: "bg-surface-container text-on-surface-variant",
+};
 
 const updatedAt = computed(() => {
   if (!summary.value) return "";
@@ -215,32 +232,19 @@ watch(
 <template>
   <section
     aria-label="Ringkasan dan rekomendasi AI"
-    class="rounded-md border border-slate-200 bg-white"
+    class="flex min-h-[30rem] max-h-[70vh] flex-col overflow-hidden rounded-xl border-2 border-outline-variant bg-surface-lowest shadow-sm"
   >
     <header
-      class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3"
+      class="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant bg-primary-50 px-4 py-3 text-on-surface"
     >
       <div>
-        <h3 class="text-sm font-semibold text-slate-900">
-          Ringkasan &amp; Rekomendasi AI
-        </h3>
-        <div
-          v-if="summary"
-          class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500"
-        >
-          <span>Diperbarui: {{ updatedAt }}</span>
-          <span
-            class="rounded bg-slate-100 px-2 py-0.5 font-medium text-slate-700"
-          >
-            {{ summary.source === "ai" ? "AI" : "Manual" }}
-          </span>
-        </div>
+        <h3 class="text-title-md">Ringkasan &amp; Rekomendasi AI</h3>
       </div>
 
       <div v-if="!editing" class="flex items-center gap-2">
         <button
           type="button"
-          class="inline-flex h-8 items-center gap-2 rounded border border-slate-300 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-wait disabled:opacity-50"
+          class="inline-flex h-8 items-center gap-2 rounded border border-primary bg-primary px-3 text-sm font-semibold text-on-primary hover:bg-primary-600 disabled:cursor-wait disabled:opacity-50"
           :disabled="generating || loading"
           aria-label="Generate ulang ringkasan AI"
           title="Generate ulang"
@@ -253,7 +257,7 @@ watch(
         <button
           v-if="summary"
           type="button"
-          class="inline-flex h-8 items-center gap-2 rounded border border-slate-300 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          class="inline-flex h-8 items-center gap-2 rounded border border-outline-variant bg-surface-lowest px-3 text-sm font-medium text-on-surface-variant hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
           :disabled="generating || loading"
           aria-label="Edit ringkasan AI"
           title="Edit ringkasan"
@@ -267,7 +271,7 @@ watch(
       <div v-else class="flex items-center gap-2">
         <button
           type="button"
-          class="inline-flex h-8 w-8 items-center justify-center rounded text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+          class="inline-flex h-8 w-8 items-center justify-center rounded bg-primary text-on-primary hover:bg-primary-600 disabled:opacity-50"
           :disabled="saving"
           aria-label="Simpan ringkasan manual"
           title="Simpan"
@@ -278,7 +282,7 @@ watch(
         </button>
         <button
           type="button"
-          class="inline-flex h-8 w-8 items-center justify-center rounded text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+          class="inline-flex h-8 w-8 items-center justify-center rounded border border-outline-variant text-on-surface-variant hover:bg-surface disabled:opacity-50"
           :disabled="saving"
           aria-label="Batalkan edit ringkasan"
           title="Batal"
@@ -289,11 +293,11 @@ watch(
       </div>
     </header>
 
-    <div class="space-y-4 p-4">
+    <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
       <p
         v-if="errorMessage"
         role="alert"
-        class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+        class="rounded border border-error bg-error-container px-3 py-2 text-body-sm text-error"
       >
         {{ errorMessage }}
         <span v-if="errorMessage.includes('AI gagal') && summary">
@@ -303,18 +307,30 @@ watch(
       <p
         v-if="syncWarning"
         role="status"
-        class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+        class="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950"
       >
         {{ syncWarning }}
       </p>
-      <p v-if="generating" role="status" class="text-sm text-slate-600">
+      <p
+        v-if="generating"
+        role="status"
+        class="text-sm text-on-surface-variant"
+      >
         <LoaderCircle class="mr-2 inline h-4 w-4 animate-spin" />
         Menyinkronkan data dan membuat rekomendasi...
       </p>
-      <p v-if="loading" role="status" class="text-sm text-slate-500">
+      <p
+        v-if="loading"
+        role="status"
+        class="inline-flex items-center gap-2 text-sm text-on-surface-variant"
+      >
+        <LoaderCircle class="h-4 w-4 animate-spin text-primary" />
         Memuat ringkasan...
       </p>
-      <p v-else-if="!summary && !editing" class="text-sm text-slate-500">
+      <p
+        v-else-if="!summary && !editing"
+        class="text-sm text-on-surface-variant"
+      >
         Belum ada ringkasan
       </p>
 
@@ -322,124 +338,150 @@ watch(
         <div class="space-y-1.5">
           <label
             for="wbs-ai-executive"
-            class="text-sm font-medium text-slate-700"
+            class="text-sm font-medium text-on-surface-variant"
             >Ringkasan</label
           >
           <textarea
             id="wbs-ai-executive"
             v-model="executiveSummaryDraft"
             rows="4"
-            class="w-full rounded border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
+            class="w-full rounded border border-outline-variant bg-surface-lowest px-3 py-2 text-body-base text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
           />
         </div>
         <div class="space-y-1.5">
           <label
             for="wbs-ai-recommendations"
-            class="text-sm font-medium text-slate-700"
+            class="text-sm font-medium text-on-surface-variant"
             >Rekomendasi</label
           >
           <textarea
             id="wbs-ai-recommendations"
             v-model="recommendationsDraft"
             rows="5"
-            class="w-full rounded border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
+            class="w-full rounded border border-outline-variant bg-surface-lowest px-3 py-2 text-body-base text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
           />
         </div>
         <div class="space-y-1.5">
-          <label for="wbs-ai-risks" class="text-sm font-medium text-slate-700"
+          <label
+            for="wbs-ai-risks"
+            class="text-sm font-medium text-on-surface-variant"
             >Risiko</label
           >
           <textarea
             id="wbs-ai-risks"
             v-model="risksDraft"
             rows="4"
-            class="w-full rounded border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
+            class="w-full rounded border border-outline-variant bg-surface-lowest px-3 py-2 text-body-base text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
           />
         </div>
       </template>
 
-      <template v-else-if="summary && !generating">
+      <template v-else-if="summary">
         <section>
-          <h4 class="text-xs font-semibold uppercase text-slate-500">
-            Ringkasan
+          <h4
+            class="flex items-center gap-2 text-xs font-semibold uppercase text-on-surface-variant"
+          >
+            <FileText class="h-4 w-4 text-primary" />
+            Ringkasan Eksekutif
           </h4>
-          <p class="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-800">
+          <p class="mt-2 whitespace-pre-wrap text-sm leading-6 text-on-surface">
             {{ summary.content.executive_summary }}
           </p>
         </section>
         <section>
-          <h4 class="text-xs font-semibold uppercase text-slate-500">
-            Rekomendasi
+          <h4 class="text-xs font-semibold uppercase text-on-surface-variant">
+            Rekomendasi Tindakan
           </h4>
-          <ul
+          <ol
             v-if="summary.content.recommendations.length"
-            class="mt-2 space-y-2"
+            class="mt-2 list-decimal space-y-2 pl-5 marker:font-semibold marker:text-primary"
           >
             <li
               v-for="(recommendation, index) in summary.content.recommendations"
               :key="`${recommendation.title}-${index}`"
-              class="border-l-2 border-blue-500 pl-3"
+              class="rounded-2xl border-2 border-outline-variant bg-surface-lowest p-3"
             >
-              <p class="text-sm font-medium text-slate-800">
+              <p class="text-sm font-semibold text-on-surface">
                 <span
-                  class="mr-2 rounded bg-slate-100 px-1.5 py-0.5 text-xs uppercase text-slate-600"
-                  >{{ recommendation.priority }}</span
+                  class="mr-2 rounded px-1.5 py-0.5 text-xs font-semibold"
+                  :class="
+                    priorityClasses[recommendation.priority] ??
+                    'bg-surface-container text-on-surface-variant'
+                  "
+                  >{{
+                    priorityLabels[recommendation.priority] ??
+                    recommendation.priority
+                  }}</span
                 >
                 {{ recommendation.title }}
               </p>
-              <p class="mt-0.5 text-sm text-slate-600">
+              <p class="mt-1 text-sm leading-5 text-on-surface-variant">
                 {{ recommendation.detail }}
               </p>
             </li>
-          </ul>
-          <p v-else class="mt-1 text-sm text-slate-500">
+          </ol>
+          <p v-else class="mt-1 text-sm text-on-surface-variant">
             Tidak ada rekomendasi.
           </p>
         </section>
         <section>
-          <h4 class="text-xs font-semibold uppercase text-slate-500">Risiko</h4>
+          <h4 class="text-xs font-semibold uppercase text-on-surface-variant">
+            Risiko
+          </h4>
           <ul
             v-if="summary.content.risks.length"
-            class="mt-1 list-disc space-y-1 pl-5 text-sm text-slate-700"
+            class="mt-2 list-disc space-y-1 pl-5 text-sm text-on-surface"
           >
             <li v-for="(risk, index) in summary.content.risks" :key="index">
               {{ risk }}
             </li>
           </ul>
-          <p v-else class="mt-1 text-sm text-slate-500">
+          <p v-else class="mt-1 text-sm text-on-surface-variant">
             Tidak ada risiko tercatat.
           </p>
         </section>
       </template>
     </div>
 
+    <footer
+      v-if="summary"
+      class="flex flex-wrap items-center justify-between gap-2 border-t border-outline-variant bg-surface-lowest px-4 py-2 text-body-sm text-on-surface-variant"
+    >
+      <span
+        class="rounded bg-surface-container px-2 py-1 font-medium text-on-surface-variant"
+      >
+        {{ summary.source === "ai" ? "AI" : "Manual" }}
+      </span>
+      <span>Diperbarui: {{ updatedAt }}</span>
+    </footer>
+
     <div
       v-if="confirmManualGenerate"
-      class="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/40 p-4"
+      class="fixed inset-0 z-[110] flex items-center justify-center bg-on-surface/40 p-4"
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="wbs-ai-confirm-title"
     >
       <section
-        class="w-full max-w-md rounded-md border border-slate-200 bg-white p-5 shadow-xl"
+        class="w-full max-w-md rounded-xl border border-outline-variant bg-surface-lowest p-5 shadow-xl"
       >
         <h4
           id="wbs-ai-confirm-title"
-          class="text-base font-semibold text-slate-900"
+          class="text-base font-semibold text-on-surface"
         >
           Generate ulang akan menimpa koreksi manual. Lanjutkan?
         </h4>
         <div class="mt-5 flex justify-end gap-2">
           <button
             type="button"
-            class="h-9 rounded border border-slate-300 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            class="h-9 rounded border border-outline-variant px-4 text-body-sm font-medium text-on-surface-variant hover:bg-surface"
             @click="confirmManualGenerate = false"
           >
             Batal
           </button>
           <button
             type="button"
-            class="inline-flex h-9 items-center gap-2 rounded bg-blue-700 px-4 text-sm font-medium text-white hover:bg-blue-800"
+            class="inline-flex h-9 items-center gap-2 rounded bg-primary px-4 text-body-sm font-medium text-on-primary hover:bg-primary-600"
             @click="generateSummary"
           >
             <RefreshCw class="h-4 w-4" />

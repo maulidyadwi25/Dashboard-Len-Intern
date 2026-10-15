@@ -196,17 +196,33 @@ class WbsAiSummaryService
 
     protected function buildRequestPayload(array $compact): array
     {
+        $statusLabels = [
+            'on_track' => 'On Track',
+            'overdue' => 'Terlambat',
+            'critical' => 'Kritis',
+            'not_started' => 'Belum Dimulai',
+            'completed' => 'Selesai',
+        ];
+
+        $compact['items'] = array_map(function (array $item) use ($statusLabels) {
+            $item['status'] = $statusLabels[$item['status'] ?? ''] ?? 'Belum Diketahui';
+
+            return $item;
+        }, $compact['items'] ?? []);
+
+        $languageInstruction = 'Semua nilai teks pada executive_summary, recommendations[].title, recommendations[].detail, dan risks[] WAJIB ditulis dalam bahasa Indonesia. Jangan menyalin istilah bahasa Inggris, kecuali nama WBS. Hanya kunci JSON dan nilai priority high|medium|low yang tetap dalam bahasa Inggris.';
+
         return [
             'model' => config('services.ai.model', 'gpt-4o-mini'),
             'temperature' => 0.2,
             'messages' => [
                 [
                     'role' => 'system',
-                    'content' => 'Anda adalah manajer proyek yang menulis ringkasan eksekutif untuk WBS. Jawab HANYA JSON valid tanpa markdown. Struktur: {"executive_summary":"...","recommendations":[{"priority":"high|medium|low","title":"...","detail":"..."}],"risks":["..."]}. Jangan mengarang angka selain yang ada di data. Fokus pada realisasi, deviasi, dan tindakan prioritas.',
+                    'content' => "Anda adalah manajer proyek yang menyusun ringkasan eksekutif WBS. Jawab HANYA JSON valid tanpa markdown dengan kontrak dan kunci persis: {\"executive_summary\":\"...\",\"recommendations\":[{\"priority\":\"high|medium|low\",\"title\":\"...\",\"detail\":\"...\"}],\"risks\":[\"...\"]}. {$languageInstruction} Nilai status On Track berarti pekerjaan berjalan sesuai rencana, Terlambat berarti melewati rencana, Kritis berarti perlu tindakan segera, Belum Dimulai berarti belum ada progres, dan Selesai berarti progres telah mencapai 100%. Jangan mengarang angka selain yang ada di data. Fokus pada realisasi, deviasi, dan tindakan prioritas.\n\nContoh keluaran: {\"executive_summary\":\"Pekerjaan berjalan sesuai rencana dengan beberapa kegiatan yang perlu dipantau.\",\"recommendations\":[{\"priority\":\"high\",\"title\":\"Percepat kegiatan tertinggal\",\"detail\":\"Atur ulang tenaga kerja untuk mengejar target pekan ini.\"}],\"risks\":[\"Penyelesaian dapat terlambat jika hambatan belum ditangani.\"]}",
                 ],
                 [
                     'role' => 'user',
-                    'content' => json_encode($compact, JSON_THROW_ON_ERROR),
+                    'content' => json_encode($compact, JSON_THROW_ON_ERROR)."\n\nInstruksi bahasa wajib: {$languageInstruction}",
                 ],
             ],
         ];

@@ -1,1 +1,57 @@
 @import "tailwindcss";
+
+@theme {
+  --color-primary-50: #e6eeff;
+  --color-primary-400: #3385ff;
+  --color-primary-500: #004ac6;
+  --color-primary-600: #003bb0;
+  --color-primary-700: #002d8a;
+  --color-primary: #004ac6;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #2563eb;
+  --color-background: #f7f9fb;
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-secondary: #505f76;
+  --color-tertiary: #4d556b;
+  --color-surface: #f7f9fb;
+  --color-surface-lowest: #ffffff;
+  --color-surface-container: #eceef0;
+  --color-on-background: #191c1e;
+  --color-on-surface: #191c1e;
+  --color-on-surface-variant: #434655;
+  --color-outline: #737686;
+  --color-outline-variant: #c3c6d7;
+
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  --radius-sm: 4px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --text-display-xl: 28px;
+  --text-display-xl--line-height: 44px;
+  --text-display-xl--font-weight: 700;
+  --text-headline-lg: 30px;
+  --text-headline-lg--line-height: 38px;
+  --text-headline-lg--font-weight: 600;
+  --text-title-md: 20px;
+  --text-title-md--line-height: 28px;
+  --text-title-md--font-weight: 600;
+  --text-body-base: 16px;
+  --text-body-base--line-height: 24px;
+  --text-body-base--font-weight: 400;
+  --text-body-sm: 12px;
+  --text-body-sm--line-height: 16px;
+  --text-body-sm--font-weight: 400;
+  --text-label-caps: 12px;
+  --text-label-caps--line-height: 16px;
+  --text-label-caps--font-weight: 600;
+  --text-label-caps--letter-spacing: 0.05em;
+
+  --spacing-element-gap: 1rem;
+  --spacing-grid-gutter: 1.5rem;
+  --spacing-section-gap: 2rem;
+  --container-max: 1280px;
+}

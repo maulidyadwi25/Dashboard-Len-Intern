@@ -55,16 +55,16 @@ Halaman ini menyajikan indikator progress dan revenue per periode, baseline, str
 
 Semua route berikut berada di `backend/routes/api.php` dan memakai `{id}` sebagai ID MasterProject.
 
-| Method dan URI | Parameter | Response utama |
-| --- | --- | --- |
-| `GET /api/projects/{id}/wbs` | Path `id` | `data.project`, `year`, `summary`, `items` (WbsItemResource) |
-| `GET /api/projects/{id}/wbs/weekly` | Query `month=all` atau `1..12` | `data.year`, `periods`, `values` berisi WBS/type/periode/value; progres web digabung sebagai type `progress` |
-| `GET /api/projects/{id}/wbs/week-summary` | Path `id` | Pekan aktif, label pekan, dan daftar leaf dengan realisasi, plan, deviasi, status |
-| `GET /api/projects/{id}/wbs/ai-summary` | Path `id` | `data` ringkasan terakhir atau `null` |
-| `POST /api/projects/{id}/wbs/ai-summary` | Tanpa body khusus | Generate ulang; sync sheet dicoba dahulu, lalu hasil `data` |
-| `PUT /api/projects/{id}/wbs/ai-summary` | JSON `content` | Simpan struktur ringkasan manual; response `data` |
-| `PUT /api/projects/{id}/wbs/{wbs_no}/progress` | JSON `percent` 0-100 | Project/WBS/periode, `percent`, latest progress, `bobot_real`, status |
-| `POST /api/projects/{id}/wbs/sync` | Path `id` | `data` hasil sync (`status`, judul sheet, jumlah WBS atau error) |
+| Method dan URI                                 | Parameter                      | Response utama                                                                                               |
+| ---------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `GET /api/projects/{id}/wbs`                   | Path `id`                      | `data.project`, `year`, `summary`, `items` (WbsItemResource)                                                 |
+| `GET /api/projects/{id}/wbs/weekly`            | Query `month=all` atau `1..12` | `data.year`, `periods`, `values` berisi WBS/type/periode/value; progres web digabung sebagai type `progress` |
+| `GET /api/projects/{id}/wbs/week-summary`      | Path `id`                      | Pekan aktif, label pekan, dan daftar leaf dengan realisasi, plan, deviasi, status                            |
+| `GET /api/projects/{id}/wbs/ai-summary`        | Path `id`                      | `data` ringkasan terakhir atau `null`                                                                        |
+| `POST /api/projects/{id}/wbs/ai-summary`       | Tanpa body khusus              | Generate ulang; sync sheet dicoba dahulu, lalu hasil `data`                                                  |
+| `PUT /api/projects/{id}/wbs/ai-summary`        | JSON `content`                 | Simpan struktur ringkasan manual; response `data`                                                            |
+| `PUT /api/projects/{id}/wbs/{wbs_no}/progress` | JSON `percent` 0-100           | Project/WBS/periode, `percent`, latest progress, `bobot_real`, status                                        |
+| `POST /api/projects/{id}/wbs/sync`             | Path `id`                      | `data` hasil sync (`status`, judul sheet, jumlah WBS atau error)                                             |
 
 - Error yang ditangani: 404 project/WBS tidak ditemukan; 422 input percent invalid, item bukan leaf, progres sudah 100%, atau struktur AI tidak valid; 409 lock generate AI sedang dipakai; 429 batas request AI; 502 kegagalan generate AI. Route API yang dibaca tidak memasang middleware autentikasi; middleware global yang berlaku: BELUM TERVERIFIKASI.
 - Mode edit UI diaktifkan melalui tombol WBS. Draft dapat dibatalkan; perubahan disimpan per leaf melalui PUT progress dan progres 100% terkunci. UI menahan navigasi saat ada perubahan draft belum tersimpan.

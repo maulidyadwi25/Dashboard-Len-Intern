@@ -198,15 +198,15 @@ const formatPercentage = (value) => {
 
 const deviationClass = (value) => {
   if (value === null || value === undefined || value === "") {
-    return "text-slate-400";
+    return "text-on-surface-variant";
   }
 
   const num = Number(value);
-  if (Number.isNaN(num) || num === 0) return "text-slate-700";
+  if (Number.isNaN(num) || num === 0) return "text-on-surface-variant";
 
   return num < 0
-    ? "text-rose-600 font-semibold bg-rose-50"
-    : "text-emerald-600 font-semibold bg-emerald-50";
+    ? "text-error font-semibold bg-error/5"
+    : "text-emerald-700 font-semibold bg-emerald-50";
 };
 
 const handleDownload = () => {
@@ -222,30 +222,28 @@ const handleDownload = () => {
 
 <template>
   <div
-    class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden"
+    class="overflow-hidden rounded-xl border border-outline-variant bg-surface-lowest shadow-sm"
   >
     <!-- Header: title, filter, download -->
     <div
-      class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-6 py-5 border-b border-slate-200"
+      class="flex flex-col justify-between gap-4 border-b border-outline-variant bg-primary-50 px-6 py-5 text-on-surface lg:flex-row lg:items-center"
     >
       <div class="space-y-1">
-        <h3 class="text-base font-extrabold text-slate-900 tracking-tight">
+        <h3 class="text-title-md">
           Laporan Progress Pekerjaan Mingguan &amp; Akumulasi RKAP
         </h3>
-        <p class="text-xs font-mono text-slate-500">
+        <p class="font-mono text-body-sm text-on-surface-variant">
           Kode Proyek: {{ projectCode }}
         </p>
       </div>
 
       <div class="flex items-center gap-3">
-        <label
-          class="text-[11px] font-bold text-slate-500 uppercase tracking-wider"
-        >
+        <label class="text-label-caps text-on-surface-variant uppercase">
           Periode
         </label>
         <select
           :value="selectedMonth"
-          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500"
+          class="rounded border border-outline-variant bg-surface-lowest px-3 py-2 text-body-sm font-semibold text-on-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           @change="emit('update:selectedMonth', $event.target.value)"
         >
           <option
@@ -259,7 +257,7 @@ const handleDownload = () => {
 
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="inline-flex items-center gap-2 rounded bg-primary px-4 py-2 text-body-sm font-bold text-on-primary shadow-sm transition hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
           :disabled="isLoading || !hasData"
           @click="handleDownload"
         >
@@ -272,10 +270,10 @@ const handleDownload = () => {
     <!-- Loading -->
     <div
       v-if="isLoading"
-      class="flex flex-col items-center justify-center gap-3 px-6 py-16"
+      class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-on-surface-variant"
     >
-      <Loader2 class="w-7 h-7 animate-spin text-blue-600" />
-      <p class="text-sm font-semibold text-slate-500">
+      <Loader2 class="h-7 w-7 animate-spin text-primary" />
+      <p class="text-sm font-semibold text-on-surface-variant">
         Memuat data progress...
       </p>
     </div>
@@ -283,10 +281,10 @@ const handleDownload = () => {
     <!-- Error -->
     <div
       v-else-if="errorMessage"
-      class="flex flex-col items-center justify-center gap-3 px-6 py-16"
+      class="flex flex-col items-center justify-center gap-3 rounded border border-error bg-error-container px-6 py-16 text-error"
     >
-      <AlertTriangle class="w-7 h-7 text-rose-500" />
-      <p class="text-sm font-semibold text-rose-600">{{ errorMessage }}</p>
+      <AlertTriangle class="h-7 w-7 text-error" />
+      <p class="text-sm font-semibold text-error">{{ errorMessage }}</p>
     </div>
 
     <!-- Empty (No sync data) -->
@@ -294,11 +292,11 @@ const handleDownload = () => {
       v-else-if="!hasData"
       class="flex flex-col items-center justify-center gap-3 px-6 py-16"
     >
-      <Inbox class="w-7 h-7 text-slate-400" />
-      <p class="text-sm font-semibold text-slate-500">
+      <Inbox class="h-7 w-7 text-on-surface-variant" />
+      <p class="text-sm font-semibold text-on-surface-variant">
         Belum ada data progress &amp; revenue.
       </p>
-      <p class="text-xs text-slate-400">
+      <p class="text-xs text-on-surface-variant">
         Jalankan sinkronisasi Google Sheets terlebih dahulu.
       </p>
     </div>
@@ -308,17 +306,21 @@ const handleDownload = () => {
       v-else-if="!hasFilteredData"
       class="flex flex-col items-center justify-center gap-3 px-6 py-16"
     >
-      <Inbox class="w-7 h-7 text-slate-400" />
-      <p class="text-sm font-semibold text-slate-500">
+      <Inbox class="h-7 w-7 text-on-surface-variant" />
+      <p class="text-sm font-semibold text-on-surface-variant">
         Tidak ada data progress untuk periode {{ selectedPeriodLabel }}.
       </p>
-      <p class="text-xs text-slate-400">
+      <p class="text-xs text-on-surface-variant">
         Pilih bulan lain atau pilih "Semua Bulan (Jan - Des)".
       </p>
     </div>
 
     <!-- Table -->
-    <div ref="tableContainerRef" v-else class="overflow-x-auto">
+    <div
+      ref="tableContainerRef"
+      v-else
+      class="overflow-x-auto rounded-xl border border-outline-variant"
+    >
       <table
         :class="[
           'border-collapse text-sm',
@@ -329,10 +331,10 @@ const handleDownload = () => {
       >
         <thead>
           <!-- Month group row -->
-          <tr class="bg-blue-600 text-white">
+          <tr class="bg-primary text-white">
             <th
               rowspan="2"
-              class="sticky left-0 z-30 bg-blue-600 px-4 py-2 text-left text-[11px] font-extrabold uppercase tracking-wider border-r border-blue-700 min-w-[220px]"
+              class="sticky left-0 z-30 min-w-[220px] border-r border-outline-variant/50 bg-primary px-4 py-2 text-left text-[11px] font-extrabold tracking-wider text-white uppercase"
             >
               Indikator
             </th>
@@ -340,19 +342,19 @@ const handleDownload = () => {
               v-for="group in monthGroups"
               :key="`month-${group.month}`"
               :colspan="group.weeks.length"
-              class="px-2 py-2 text-center text-[11px] font-extrabold uppercase tracking-wider border-l border-blue-500"
+              class="border-l border-outline-variant/40 px-2 py-2 text-center text-[11px] font-extrabold tracking-wider uppercase"
             >
               {{ group.label }}
             </th>
           </tr>
 
           <!-- Week row -->
-          <tr class="bg-blue-50 text-slate-700">
+          <tr class="bg-surface text-on-surface-variant">
             <th
               v-for="week in flatWeeks"
               :key="`hdr-${week.label}-${week.index}`"
               :class="[
-                'px-1 py-1.5 text-center text-[10px] font-bold border-l border-slate-200',
+                'border-b border-outline-variant/60 px-1 py-1.5 text-center text-body-sm font-bold',
                 selectedMonth === 'all'
                   ? 'min-w-[64px]'
                   : 'min-w-[100px] w-1/4',
@@ -367,12 +369,12 @@ const handleDownload = () => {
           <tr
             v-for="indicator in orderedIndicators"
             :key="indicator.key"
-            class="border-t border-slate-200 hover:bg-slate-50/60"
+            class="border-t border-outline-variant hover:bg-surface"
           >
             <!-- Sticky indicator label -->
             <th
               scope="row"
-              class="sticky left-0 z-20 bg-white px-4 py-8 text-left text-xs font-bold text-slate-700 border-r border-slate-200 min-w-[220px] whitespace-nowrap"
+              class="sticky left-0 z-20 min-w-[220px] whitespace-nowrap border-r border-outline-variant/50 bg-surface-lowest px-4 py-8 text-left text-body-sm font-bold text-on-surface-variant"
             >
               {{ indicator.label }}
             </th>
@@ -381,11 +383,11 @@ const handleDownload = () => {
             <td
               v-for="week in flatWeeks"
               :key="`cell-${indicator.key}-${week.index}`"
-              class="px-1 py-2.5 text-center text-xs font-semibold tabular-nums border-l border-slate-200 min-w-[64px]"
+              class="min-w-[64px] border-b border-outline-variant/60 px-1 py-2.5 text-center text-body-sm font-semibold tabular-nums"
               :class="
                 indicator.key === 'deviation_vs_rkap'
                   ? deviationClass(indicator.values[week.index])
-                  : 'text-slate-700'
+                  : 'text-on-surface-variant'
               "
             >
               {{ formatPercentage(indicator.values[week.index]) }}

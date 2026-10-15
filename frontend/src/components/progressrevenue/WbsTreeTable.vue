@@ -60,13 +60,16 @@ const months = [
 ];
 
 const statusDisplay: Record<WbsStatus, { label: string; className: string }> = {
-  not_started: { label: "Belum Mulai", className: "bg-gray-100 text-gray-700" },
+  not_started: {
+    label: "Not Started",
+    className: "bg-surface text-on-surface-variant",
+  },
   on_track: {
     label: "On Track",
-    className: "bg-emerald-100 text-emerald-700",
+    className: "bg-emerald-50 text-emerald-700",
   },
-  overdue: { label: "Overdue", className: "bg-amber-100 text-amber-700" },
-  critical: { label: "Critical", className: "bg-red-100 text-red-700" },
+  overdue: { label: "Overdue", className: "bg-amber-100 text-amber-900" },
+  critical: { label: "Critical", className: "bg-error-container text-error" },
 };
 
 function getDraft(item: WbsTreeItem): string {
@@ -235,7 +238,7 @@ async function saveChanges(): Promise<void> {
       <div class="flex items-center gap-2">
         <span
           v-if="errorRows.length > 0"
-          class="text-xs font-medium text-red-700"
+          class="text-xs font-medium text-error"
           aria-live="polite"
         >
           {{ errorRows.length }} baris perlu diperbaiki
@@ -243,7 +246,7 @@ async function saveChanges(): Promise<void> {
         <button
           v-if="errorRows.length > 0"
           type="button"
-          class="h-8 rounded border border-red-300 bg-white px-3 text-xs font-medium text-red-700 hover:bg-red-50"
+          class="h-8 rounded border border-error/50 bg-white px-3 text-xs font-medium text-error hover:bg-error/5"
           @click="focusFirstError"
         >
           Ke baris pertama
@@ -274,11 +277,11 @@ async function saveChanges(): Promise<void> {
     </div>
 
     <div
-      class="overflow-auto rounded-md border bg-white"
+      class="overflow-auto rounded-xl border border-outline-variant bg-surface-lowest shadow-sm"
       :class="
         isEditing
           ? 'border-amber-300 outline outline-1 outline-amber-100'
-          : 'border-slate-200'
+          : 'border-outline-variant'
       "
     >
       <table
@@ -296,44 +299,44 @@ async function saveChanges(): Promise<void> {
           <col :style="{ width: `${periods.length * 36}px` }" />
         </colgroup>
         <thead>
-          <tr class="text-xs uppercase text-slate-500">
+          <tr class="text-xs uppercase text-white">
             <th
-              class="sticky left-0 top-0 z-50 min-w-16 border-b border-slate-200 bg-slate-50 px-2 py-3 font-semibold whitespace-nowrap"
+              class="sticky left-0 top-0 z-50 min-w-16 border-b border-primary/80 bg-primary px-2 py-3 font-semibold whitespace-nowrap"
             >
               WBS
             </th>
             <th
-              class="sticky left-16 top-0 z-50 min-w-62.5 border-b border-slate-200 bg-slate-50 px-3 py-3 font-semibold whitespace-nowrap"
+              class="sticky left-16 top-0 z-50 min-w-62.5 border-b border-primary/80 bg-primary px-3 py-3 font-semibold whitespace-nowrap"
             >
               Aktivitas
             </th>
             <th
-              class="sticky top-0 z-30 min-w-27.5 border-b border-slate-200 bg-slate-50 px-3 py-3 text-right font-semibold whitespace-nowrap"
+              class="sticky top-0 z-30 min-w-27.5 border-b border-primary/80 bg-primary px-3 py-3 text-right font-semibold whitespace-nowrap"
             >
               Bobot Plan
             </th>
             <th
-              class="sticky top-0 z-30 min-w-27.5 border-b border-slate-200 bg-slate-50 px-3 py-3 text-right font-semibold whitespace-nowrap"
+              class="sticky top-0 z-30 min-w-27.5 border-b border-primary/80 bg-primary px-3 py-3 text-right font-semibold whitespace-nowrap"
             >
               Bobot Real
             </th>
             <th
-              class="sticky top-0 z-30 min-w-26.25 border-b border-slate-200 bg-slate-50 px-3 py-3 font-semibold whitespace-nowrap"
+              class="sticky top-0 z-30 min-w-26.25 border-b border-primary/80 bg-primary px-3 py-3 font-semibold whitespace-nowrap"
             >
               Durasi
             </th>
             <th
-              class="sticky top-0 z-30 min-w-47.5 border-b border-slate-200 bg-slate-50 px-3 py-3 font-semibold whitespace-nowrap"
+              class="sticky top-0 z-30 min-w-47.5 border-b border-primary/80 bg-primary px-3 py-3 font-semibold whitespace-nowrap"
             >
               Jadwal
             </th>
             <th
-              class="sticky top-0 z-30 min-w-47.5 border-b border-slate-200 bg-slate-50 px-3 py-3 font-semibold whitespace-nowrap"
+              class="sticky top-0 z-30 min-w-47.5 border-b border-primary/80 bg-primary px-3 py-3 font-semibold whitespace-nowrap"
             >
               Progres
             </th>
             <th
-              class="sticky top-0 z-30 min-w-35 border-b border-slate-200 bg-slate-50 px-3 py-3 font-semibold whitespace-nowrap"
+              class="sticky top-0 z-30 min-w-35 border-b border-primary/80 bg-primary px-3 py-3 font-semibold whitespace-nowrap"
             >
               Status
             </th>
@@ -343,12 +346,12 @@ async function saveChanges(): Promise<void> {
         <tbody>
           <tr v-for="entry in items" :key="entry.item.wbs_no" class="group">
             <td
-              class="sticky left-0 z-50 h-16 min-w-16 border-b border-slate-100 bg-white px-3 font-medium text-slate-700 group-hover:bg-slate-50"
+              class="sticky left-0 z-50 h-16 min-w-16 border-b border-outline-variant bg-surface-lowest px-3 font-medium text-on-surface-variant group-hover:bg-surface"
             >
               {{ entry.item.wbs_no }}
             </td>
             <td
-              class="sticky left-12 z-50 h-16 min-w-62.5 border-b border-slate-100 bg-white px-3 text-slate-800 group-hover:bg-slate-50"
+              class="sticky left-12 z-50 h-16 min-w-62.5 border-b border-outline-variant bg-surface-lowest px-3 text-on-surface group-hover:bg-surface"
             >
               <div
                 class="flex items-center gap-1.5 truncate"
@@ -357,7 +360,7 @@ async function saveChanges(): Promise<void> {
                 <button
                   v-if="entry.item.children.length > 0"
                   type="button"
-                  class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-900"
+                  class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-on-surface-variant hover:bg-surface hover:text-on-surface"
                   :aria-label="`Toggle ${entry.item.wbs_no}`"
                   :aria-expanded="Boolean(expanded[entry.item.wbs_no])"
                   @click="emit('toggle', entry.item.wbs_no)"
@@ -378,30 +381,30 @@ async function saveChanges(): Promise<void> {
               </div>
             </td>
             <td
-              class="h-16 min-w-27.5 border-b border-slate-100 px-3 text-right tabular-nums text-slate-700 whitespace-nowrap"
+              class="h-16 min-w-27.5 border-b border-outline-variant px-3 text-right tabular-nums text-on-surface whitespace-nowrap"
             >
               {{ formatPercent(entry.item.bobot_plan) }}
             </td>
             <td
-              class="h-16 min-w-27.5 border-b border-slate-100 px-3 text-right tabular-nums text-slate-700 whitespace-nowrap"
+              class="h-16 min-w-27.5 border-b border-outline-variant px-3 text-right tabular-nums text-on-surface whitespace-nowrap"
             >
               {{ formatPercent(entry.item.bobot_real) }}
             </td>
             <td
-              class="h-16 min-w-26.25 border-b border-slate-100 px-3 text-slate-600 whitespace-nowrap"
+              class="h-16 min-w-26.25 border-b border-outline-variant px-3 text-on-surface-variant whitespace-nowrap"
             >
               {{ entry.item.durasi ?? "-" }}
             </td>
             <td
-              class="h-16 min-w-47.5 border-b border-slate-100 px-3 whitespace-nowrap"
+              class="h-16 min-w-47.5 border-b border-outline-variant px-3 whitespace-nowrap"
             >
               <div
                 class="flex h-16 flex-col justify-center gap-0.5 whitespace-nowrap text-xs leading-4"
               >
-                <span class="text-slate-600"
+                <span class="text-on-surface-variant"
                   >P {{ planRange(entry.item) }}</span
                 >
-                <span class="text-slate-500"
+                <span class="text-on-surface-variant"
                   >A
                   {{
                     formatRange(
@@ -413,7 +416,7 @@ async function saveChanges(): Promise<void> {
               </div>
             </td>
             <td
-              class="h-16 min-w-47.5 border-b border-slate-100 px-3 whitespace-nowrap"
+              class="h-16 min-w-47.5 border-b border-outline-variant px-3 whitespace-nowrap"
             >
               <div v-if="isLeaf(entry.item)" class="flex items-center gap-2">
                 <template v-if="isEditing && !isLocked(entry.item)">
@@ -430,23 +433,23 @@ async function saveChanges(): Promise<void> {
                       class="h-8 w-21 rounded border px-2 text-right tabular-nums outline-none ring-1 focus:ring-1"
                       :class="
                         progressError(entry.item)
-                          ? 'border-red-500 ring-red-100 focus:ring-red-300'
-                          : 'border-blue-500 ring-blue-100 focus:ring-blue-300'
+                          ? 'border-error ring-error/10 focus:ring-error/30'
+                          : 'border-primary ring-primary/10 focus:ring-primary/30'
                       "
                       @input="updateDraft(entry.item.wbs_no, $event)"
                       @keydown.enter.prevent
                     />
-                    <span class="text-xs text-slate-500">%</span>
+                    <span class="text-xs text-on-surface-variant">%</span>
                     <span
                       v-if="hasChanged(entry.item)"
-                      class="h-2 w-2 rounded-full bg-blue-600"
+                      class="h-2 w-2 rounded-full bg-primary"
                       :aria-label="`Perubahan belum disimpan untuk ${entry.item.wbs_no}`"
                       title="Perubahan belum disimpan"
                     />
                     <p
                       v-if="progressError(entry.item)"
                       aria-live="polite"
-                      class="absolute left-0 top-full z-30 mt-1 w-56 whitespace-normal rounded border border-red-200 bg-white px-2 py-1.5 text-xs text-red-700 shadow-sm"
+                      class="absolute left-0 top-full z-30 mt-1 w-56 whitespace-normal rounded border border-error/30 bg-white px-2 py-1.5 text-xs text-error shadow-sm"
                     >
                       {{ progressError(entry.item) }}
                     </p>
@@ -454,22 +457,24 @@ async function saveChanges(): Promise<void> {
                 </template>
                 <template v-else-if="isLocked(entry.item)">
                   <LockKeyhole
-                    class="h-4 w-4 text-slate-500"
+                    class="h-4 w-4 text-on-surface-variant"
                     title="Progres sudah 100%, input dikunci."
                     aria-label="Progres sudah 100%, input dikunci."
                   />
-                  <span class="font-medium text-slate-700">Selesai</span>
+                  <span class="font-medium text-on-surface-variant"
+                    >Selesai</span
+                  >
                 </template>
-                <span v-else class="font-medium tabular-nums text-slate-700">
+                <span v-else class="font-medium tabular-nums text-on-surface">
                   {{ formatPercent(entry.item.latest_progress_percent) }}
                 </span>
               </div>
-              <span v-else class="font-medium tabular-nums text-slate-700">
+              <span v-else class="font-medium tabular-nums text-on-surface">
                 {{ formatPercent(entry.item.progress_sum) }}
               </span>
             </td>
             <td
-              class="h-16 min-w-35 border-b border-slate-100 px-3 whitespace-nowrap"
+              class="h-16 min-w-35 border-b border-outline-variant px-3 whitespace-nowrap"
             >
               <span
                 v-if="

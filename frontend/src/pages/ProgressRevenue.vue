@@ -240,12 +240,12 @@ function downloadWbsPdf() {
 
 <template>
   <div
-    class="min-h-screen flex flex-col bg-[#f4f7fa] font-sans text-slate-800 antialiased"
+    class="min-h-screen flex flex-col bg-background font-sans text-on-surface antialiased"
   >
     <ExecutiveHeader />
 
     <main
-      class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-6 space-y-5"
+      class="mx-auto flex w-full max-w-container-max flex-1 flex-col gap-section-gap px-4 py-6 sm:px-6"
     >
       <ProjectSelectorBar />
 
@@ -264,7 +264,7 @@ function downloadWbsPdf() {
 
       <section
         aria-label="WBS Monitoring"
-        class="space-y-4 border-t border-slate-200 pt-6"
+        class="space-y-section-gap border-t border-outline-variant pt-6"
         :aria-busy="wbsLoading || wbsWeeklyLoading"
       >
         <WbsSummaryCards
@@ -278,7 +278,7 @@ function downloadWbsPdf() {
         <p
           v-if="wbsError && wbsVisibleItems.length > 0"
           role="alert"
-          class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          class="rounded border border-error bg-error-container px-4 py-3 text-sm text-error"
         >
           {{ wbsError }}
         </p>
@@ -286,7 +286,7 @@ function downloadWbsPdf() {
         <section aria-label="WBS table" class="min-h-0">
           <div
             v-if="wbsLoading && wbsVisibleItems.length === 0"
-            class="flex min-h-48 items-center justify-center rounded-md border border-slate-200 bg-white text-sm text-slate-500"
+            class="flex min-h-48 items-center justify-center rounded-xl border border-outline-variant bg-surface-lowest text-sm text-on-surface-variant shadow-sm"
             role="status"
           >
             Memuat data WBS dan Gantt...
@@ -294,18 +294,18 @@ function downloadWbsPdf() {
           <div
             v-else-if="wbsError && wbsVisibleItems.length === 0"
             role="alert"
-            class="flex min-h-48 items-center justify-center rounded-md border border-red-200 bg-red-50 px-4 text-center text-sm text-red-700"
+            class="flex min-h-48 items-center justify-center rounded-xl border border-error bg-error-container px-4 text-center text-sm text-error shadow-sm"
           >
             {{ wbsError }}
           </div>
           <div
             v-else-if="wbsVisibleItems.length === 0"
-            class="flex min-h-48 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-slate-300 bg-white text-center"
+            class="flex min-h-48 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-outline-variant bg-surface-lowest text-center shadow-sm"
           >
-            <p class="text-sm font-semibold text-slate-700">
+            <p class="text-sm font-semibold text-on-surface">
               Belum ada data WBS, klik Sync
             </p>
-            <p class="text-xs text-slate-500">
+            <p class="text-xs text-on-surface-variant">
               Gunakan tombol Sync WBS untuk mengambil struktur terbaru.
             </p>
           </div>
@@ -326,17 +326,18 @@ function downloadWbsPdf() {
             @finish-edit="isWbsEditing = false"
           />
         </section>
-        <section aria-label="Ringkasan WBS Pekan Ini" class="space-y-4">
+        <section
+          aria-label="Ringkasan WBS Pekan Ini"
+          class="grid gap-4 lg:grid-cols-3"
+        >
           <WbsWeekSummary
             :week-label="weekSummary.week_label"
             :items="weekSummary.items"
             :loading="weekSummaryLoading"
             :error="weekSummaryError"
           />
-          <div class="grid items-start gap-4 xl:grid-cols-2">
-            <WbsDeviationPanel :items="weekSummary.items" />
-            <WbsAiSummary :project-id="activeProjectId" />
-          </div>
+          <WbsAiSummary :project-id="activeProjectId" />
+          <WbsDeviationPanel :items="weekSummary.items" />
         </section>
       </section>
     </main>
@@ -345,31 +346,31 @@ function downloadWbsPdf() {
 
     <div
       v-if="showWbsDiscardDialog"
-      class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 p-4"
+      class="fixed inset-0 z-[100] flex items-center justify-center bg-on-surface/40 p-4"
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="wbs-discard-title"
     >
       <section
-        class="w-full max-w-md rounded-md border border-slate-200 bg-white p-5 shadow-xl"
+        class="w-full max-w-md rounded-xl border border-outline-variant bg-surface-lowest p-5 shadow-xl"
       >
         <h2
           id="wbs-discard-title"
-          class="text-base font-semibold text-slate-900"
+          class="text-base font-semibold text-on-surface"
         >
           Perubahan belum tersimpan. Buang perubahan?
         </h2>
         <div class="mt-5 flex justify-end gap-2">
           <button
             type="button"
-            class="h-9 rounded border border-slate-300 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            class="h-9 rounded border border-outline-variant px-4 text-sm font-medium text-on-surface-variant hover:bg-surface"
             @click="keepWbsChanges"
           >
             Kembali
           </button>
           <button
             type="button"
-            class="h-9 rounded bg-red-700 px-4 text-sm font-medium text-white hover:bg-red-800"
+            class="h-9 rounded bg-error px-4 text-sm font-medium text-white hover:bg-error/90"
             @click="discardWbsChanges"
           >
             Buang

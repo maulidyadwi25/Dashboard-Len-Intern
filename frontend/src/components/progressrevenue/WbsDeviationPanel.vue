@@ -31,45 +31,69 @@ function formatPercent(value: number): string {
 <template>
   <section
     aria-label="Deviasi WBS terbesar"
-    class="rounded-md border border-slate-200 bg-white"
+    class="flex flex-col overflow-hidden rounded-2xl border-2 border-outline-variant bg-surface-lowest shadow-sm"
   >
-    <div class="border-b border-slate-200 px-4 py-3">
-      <h3 class="text-sm font-semibold text-slate-900">Deviasi Terbesar</h3>
-    </div>
-    <ol v-if="worstItems.length" class="divide-y divide-slate-100">
+    <header
+      class="border-b border-outline-variant bg-primary-50 px-4 py-3 text-on-surface"
+    >
+      <h3 class="text-title-md">Deviasi Terbesar</h3>
+    </header>
+    <ol
+      v-if="worstItems.length"
+      class="space-y-2 p-3"
+    >
       <li
         v-for="item in worstItems"
         :key="item.wbs_no"
-        class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3"
+        class="rounded-2xl border-2 border-outline-variant bg-surface p-3 transition-shadow hover:shadow-sm"
       >
-        <div class="min-w-0">
-          <p class="text-xs font-medium text-slate-500">{{ item.wbs_no }}</p>
-          <p
-            class="truncate text-sm font-medium text-slate-800"
-            :title="item.activity_name"
-          >
-            {{ item.activity_name }}
-          </p>
-        </div>
-        <div class="flex shrink-0 items-center gap-4 text-xs tabular-nums">
-          <span class="text-slate-500"
-            >Rencana {{ formatPercent(item.planned_percent) }}</span
-          >
-          <span class="text-slate-500"
-            >Aktual {{ formatPercent(item.latest_progress_percent) }}</span
-          >
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <p class="text-body-sm font-medium text-on-surface-variant">
+              {{ item.wbs_no }}
+            </p>
+            <p
+              class="truncate text-body-sm font-semibold text-on-surface"
+              :title="item.activity_name"
+            >
+              {{ item.activity_name }}
+            </p>
+          </div>
           <strong
+            class="shrink-0 rounded px-2 py-1 text-xs tabular-nums"
             :class="
-              item.deviation_percent < 0 ? 'text-rose-700' : 'text-emerald-700'
+              item.deviation_percent < 0
+                ? 'bg-error-container text-error'
+                : 'bg-emerald-100 text-emerald-800'
             "
           >
             {{ item.deviation_percent > 0 ? "+" : ""
             }}{{ formatPercent(item.deviation_percent) }}
           </strong>
         </div>
+        <div class="mt-3 flex items-center justify-between gap-2 text-xs">
+          <span class="text-on-surface-variant">Progres aktual</span>
+          <span class="font-semibold tabular-nums text-on-surface">{{
+            formatPercent(item.latest_progress_percent)
+          }}</span>
+        </div>
+        <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-surface">
+          <div
+            class="h-full rounded-full bg-emerald-500"
+            :style="{
+              width: `${Math.min(100, Math.max(0, item.latest_progress_percent))}%`,
+            }"
+          />
+        </div>
+        <div class="mt-2 flex justify-between gap-2 text-xs tabular-nums">
+          <span class="text-on-surface-variant">Rencana</span>
+          <span class="font-medium text-on-surface-variant">{{
+            formatPercent(item.planned_percent)
+          }}</span>
+        </div>
       </li>
     </ol>
-    <p v-else class="px-4 py-4 text-sm text-slate-500">
+    <p v-else class="p-4 text-sm text-on-surface-variant">
       Belum ada deviasi untuk ditampilkan.
     </p>
   </section>

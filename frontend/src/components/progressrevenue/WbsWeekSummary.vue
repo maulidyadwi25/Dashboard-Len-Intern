@@ -18,15 +18,15 @@ defineProps<{
 const statusLabels: Record<string, string> = {
   not_started: "Belum Mulai",
   on_track: "On Track",
-  overdue: "Overdue",
-  critical: "Critical",
+  overdue: "Terlambat",
+  critical: "Kritis",
 };
 
 const statusClasses: Record<string, string> = {
-  not_started: "bg-slate-100 text-slate-700",
-  on_track: "bg-emerald-100 text-emerald-800",
-  overdue: "bg-amber-100 text-amber-800",
-  critical: "bg-rose-100 text-rose-800",
+  not_started: "bg-surface text-on-surface-variant",
+  on_track: "bg-emerald-50 text-emerald-700",
+  overdue: "bg-amber-100 text-amber-900",
+  critical: "bg-error-container text-error",
 };
 
 function formatPercent(value: number): string {
@@ -35,80 +35,98 @@ function formatPercent(value: number): string {
 </script>
 
 <template>
-  <section aria-label="Ringkasan WBS pekan ini" class="space-y-3">
-    <div class="flex flex-wrap items-baseline justify-between gap-2">
-      <h2 class="text-lg font-semibold text-slate-900">
-        Ringkasan WBS Pekan Ini
-      </h2>
-      <p v-if="weekLabel" class="text-sm text-slate-500">{{ weekLabel }}</p>
-    </div>
+  <section
+    aria-label="Ringkasan WBS pekan ini"
+    class="flex flex-col overflow-hidden rounded-2xl border-2 border-outline-variant bg-surface-lowest shadow-sm"
+  >
+    <header
+      class="flex items-center justify-between gap-2 border-b border-outline-variant bg-primary-50 px-4 py-3 text-on-surface"
+    >
+      <h2 class="text-title-md">Ringkasan WBS Pekan Ini</h2>
+      <p v-if="weekLabel" class="text-body-sm text-on-surface-variant">
+        {{ weekLabel }}
+      </p>
+    </header>
 
     <p
       v-if="error"
       role="alert"
-      class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+      class="m-3 rounded border border-error bg-error-container px-3 py-2 text-body-sm text-error"
     >
       {{ error }}
     </p>
     <p
       v-else-if="loading"
       role="status"
-      class="rounded-md border border-slate-200 bg-white px-3 py-4 text-sm text-slate-500"
+      class="m-3 text-sm text-on-surface-variant"
     >
       Memuat ringkasan pekan ini...
     </p>
     <p
       v-else-if="items.length === 0"
-      class="rounded-md border border-dashed border-slate-300 bg-white px-3 py-4 text-sm text-slate-500"
+      class="m-3 text-sm text-on-surface-variant"
     >
       Tidak ada aktivitas WBS aktif pekan ini.
     </p>
-    <div v-else class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div v-else class="space-y-2 p-3">
       <article
         v-for="item in items"
         :key="item.wbs_no"
-        class="min-w-0 rounded-md border border-slate-200 bg-white p-3"
+        class="min-w-0 rounded-2xl border-2 border-outline-variant bg-surface p-3 transition-shadow hover:shadow-sm"
       >
-        <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start justify-between gap-2">
           <div class="min-w-0">
-            <p class="text-xs font-semibold text-slate-500">
+            <p class="text-body-sm font-semibold text-on-surface-variant">
               {{ item.wbs_no }}
             </p>
             <h3
-              class="mt-1 truncate text-sm font-semibold text-slate-900"
+              class="mt-1 truncate text-body-sm font-semibold text-on-surface"
               :title="item.activity_name"
             >
               {{ item.activity_name }}
             </h3>
           </div>
           <span
-            class="shrink-0 rounded px-2 py-1 text-xs font-medium"
-            :class="statusClasses[item.status] ?? 'bg-slate-100 text-slate-700'"
+            class="shrink-0 rounded px-2 py-1 text-body-sm font-medium"
+            :class="
+              statusClasses[item.status] ?? 'bg-surface text-on-surface-variant'
+            "
           >
             {{ statusLabels[item.status] ?? item.status }}
           </span>
         </div>
-        <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <p class="text-xs text-slate-500">Progres</p>
-            <p class="mt-0.5 font-semibold tabular-nums text-slate-800">
-              {{ formatPercent(item.latest_progress_percent) }}
-            </p>
-          </div>
-          <div>
-            <p class="text-xs text-slate-500">Deviasi</p>
-            <p
-              class="mt-0.5 font-semibold tabular-nums"
-              :class="
-                item.deviation_percent < 0
-                  ? 'text-rose-700'
-                  : 'text-emerald-700'
-              "
-            >
-              {{ item.deviation_percent > 0 ? "+" : ""
-              }}{{ formatPercent(item.deviation_percent) }}
-            </p>
-          </div>
+        <div class="mt-3 flex items-center justify-between gap-3 text-body-sm">
+          <span class="text-on-surface-variant">Progres</span>
+          <span class="font-semibold tabular-nums text-on-surface">
+            {{ formatPercent(item.latest_progress_percent) }}
+          </span>
+        </div>
+        <div
+          class="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-container"
+          role="progressbar"
+          :aria-valuenow="item.latest_progress_percent"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`Progres ${item.wbs_no}`"
+        >
+          <div
+            class="h-full rounded-full bg-emerald-500"
+            :style="{
+              width: `${Math.min(100, Math.max(0, item.latest_progress_percent))}%`,
+            }"
+          />
+        </div>
+        <div class="mt-2 flex items-center justify-between gap-3 text-body-sm">
+          <span class="text-on-surface-variant">Deviasi</span>
+          <span
+            class="font-semibold tabular-nums"
+            :class="
+              item.deviation_percent < 0 ? 'text-error' : 'text-emerald-800'
+            "
+          >
+            {{ item.deviation_percent > 0 ? "+" : ""
+            }}{{ formatPercent(item.deviation_percent) }}
+          </span>
         </div>
       </article>
     </div>

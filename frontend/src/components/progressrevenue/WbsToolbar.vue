@@ -46,14 +46,16 @@ async function runSync(): Promise<void> {
 
 <template>
   <section
-    class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4"
+    class="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant pb-4"
     aria-label="WBS controls"
   >
-    <label class="hidden items-center gap-2 text-sm font-medium text-slate-700">
+    <label
+      class="hidden items-center gap-2 text-body-sm font-medium text-on-surface-variant"
+    >
       Bulan
       <select
         :value="selectedMonth"
-        class="h-9 min-w-36 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+        class="h-9 min-w-36 rounded-lg border border-outline-variant bg-surface-lowest px-3 text-body-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
         @change="updateMonth"
       >
         <option value="all">Semua bulan</option>
@@ -68,12 +70,16 @@ async function runSync(): Promise<void> {
     </label>
 
     <div class="flex min-h-9 items-center gap-3">
-      <p v-if="syncMessage" role="status" class="text-sm text-slate-600">
+      <p
+        v-if="syncMessage"
+        role="status"
+        class="text-body-sm text-on-surface-variant"
+      >
         {{ syncMessage }}
       </p>
       <button
         type="button"
-        class="inline-flex h-9 items-center gap-2 rounded-md bg-emerald-700 px-3 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-60"
+        class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-body-sm font-semibold text-on-primary transition hover:bg-primary-600 disabled:cursor-wait disabled:opacity-60"
         :disabled="syncing"
         @click="runSync"
       >
