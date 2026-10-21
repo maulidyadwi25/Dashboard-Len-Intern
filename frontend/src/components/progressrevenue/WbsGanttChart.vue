@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import {
   buildWbsBarLayout,
   currentJakartaWeekOrdinal,
@@ -31,25 +31,73 @@ const monthNames = [
   "Desember",
 ];
 const trackWidth = 36;
+const clockTick = ref(0);
+let clockInterval: ReturnType<typeof setInterval> | undefined;
 
-const gridWidth = computed(() => `${props.periods.length * trackWidth}px`);
+onMounted(() => {
+  clockInterval = setInterval(() => {
+    clockTick.value += 1;
+  }, 60_000);
+});
+
+onUnmounted(() => {
+  if (clockInterval !== undefined) clearInterval(clockInterval);
+});
+
+const timelinePeriods = computed(() => {
+  clockTick.value;
+  const periods = [...props.periods];
+  if (periods.length === 0) return periods;
+
+  const isContinuous = periods.every((period, index) =>
+    index === 0 ||
+    (period.ordinal ?? (period.year * 48 + (period.month - 1) * 4 + period.week - 1)) ===
+      (periods[index - 1].ordinal ?? (periods[index - 1].year * 48 + (periods[index - 1].month - 1) * 4 + periods[index - 1].week - 1)) + 1,
+  );
+  if (!isContinuous) return periods;
+
+  const currentOrdinal = currentJakartaWeekOrdinal();
+  let lastOrdinal = (periods[periods.length - 1].ordinal ?? (periods[periods.length - 1].year * 48 + (periods[periods.length - 1].month - 1) * 4 + periods[periods.length - 1].week - 1)) + 1;
+
+  while (lastOrdinal < currentOrdinal) {
+    const ordinal = lastOrdinal + 1;
+    const year = Math.floor((ordinal - 1) / 48);
+    const weekOfYear = (ordinal - 1) % 48;
+    const month = Math.floor(weekOfYear / 4) + 1;
+    const week = (weekOfYear % 4) + 1;
+    periods.push({
+      year,
+      month,
+      week,
+      label: `${monthNames[month - 1]} W${week}`,
+      key: `${year}-${month}-${week}`,
+      ordinal: ordinal - 1,
+    });
+    lastOrdinal = ordinal;
+  }
+
+  return periods;
+});
+
+const gridWidth = computed(() => `${timelinePeriods.value.length * trackWidth}px`);
 const gridColumns = computed(() =>
-  props.periods.length > 0
-    ? `repeat(${props.periods.length}, ${trackWidth}px)`
+  timelinePeriods.value.length > 0
+    ? `repeat(${timelinePeriods.value.length}, ${trackWidth}px)`
     : "none",
 );
 
 const monthGroups = computed(() => {
-  const groups: Array<{ month: number; label: string; span: number }> = [];
+  const groups: Array<{ month: number; year: number; label: string; span: number }> = [];
 
-  for (const period of props.periods) {
+  for (const period of timelinePeriods.value) {
     const last = groups[groups.length - 1];
-    if (last?.month === period.month) {
+    if (last?.month === period.month && last.year === period.year) {
       last.span += 1;
     } else {
       groups.push({
         month: period.month,
-        label: monthNames[period.month - 1] ?? String(period.month),
+        year: period.year,
+        label: `${monthNames[period.month - 1] ?? String(period.month)} ${period.year}`,
         span: 1,
       });
     }
@@ -59,20 +107,21 @@ const monthGroups = computed(() => {
 });
 
 const segments = computed(() => {
+  clockTick.value;
   if (props.mode !== "row" || !props.item) return [];
   return buildWbsBarLayout(
     props.item,
-    props.periods,
+    timelinePeriods.value,
     props.progressValues ?? [],
   );
 });
 
-const currentWeekColumn = computed(() =>
-  props.periods.findIndex(
-    (period) =>
-      period.month * 4 - 4 + period.week === currentJakartaWeekOrdinal(),
-  ),
-);
+const currentWeekColumn = computed(() => {
+  clockTick.value;
+  return timelinePeriods.value.findIndex(
+    (period) => (period.ordinal ?? (period.year * 48 + (period.month - 1) * 4 + period.week - 1)) + 1 === currentJakartaWeekOrdinal(),
+  );
+});
 
 const toneClasses: Record<WbsBarSegment["tone"], string> = {
   plan: "bg-blue-200",
@@ -92,10 +141,10 @@ function segmentTop(segment: WbsBarSegment): string {
   <th
     v-if="mode === 'header'"
     :style="{ width: gridWidth, minWidth: gridWidth }"
-    class="sticky top-0 z-30 border-b border-l border-slate-200 bg-slate-50 p-0 align-top overflow-hidden"
+    class="sticky top-0 z-30 border-b border-l border-slate-200 bg-primary p-0 align-top overflow-hidden"
     aria-label="Gantt mingguan"
   >
-    <div class="text-xs font-semibold text-slate-600">
+    <div class="text-xs font-semibold text-white">
       <div
         class="grid h-7 border-b border-slate-200"
         :style="{ gridTemplateColumns: gridColumns }"
@@ -111,7 +160,7 @@ function segmentTop(segment: WbsBarSegment): string {
       </div>
       <div class="grid h-7" :style="{ gridTemplateColumns: gridColumns }">
         <div
-          v-for="period in periods"
+          v-for="period in timelinePeriods"
           :key="period.key"
           class="flex items-center justify-center border-r border-slate-200 text-[10px]"
         >
@@ -142,7 +191,7 @@ function segmentTop(segment: WbsBarSegment): string {
         aria-hidden="true"
       >
         <span
-          v-for="period in periods"
+          v-for="period in timelinePeriods"
           :key="period.key"
           class="border-r border-slate-100"
         />

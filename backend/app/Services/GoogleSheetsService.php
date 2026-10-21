@@ -631,11 +631,46 @@ class GoogleSheetsService
                     ['type' => 'progress_revenue'],
                     [
                         'project_name' => $profile['project_name'],
+                        'project_code' => $profile['project_code'] ?? null,
+                        'client_name' => $profile['client_name'] ?? null,
                         'nilai_kontrak' => $profile['contract_value'],
                         'nama_pimpro' => $profile['project_lead_name'],
                         'nama_PA' => $profile['report_owner_name'],
                     ]
                 );
+
+                $projectCode = trim((string) ($profile['project_code'] ?? ''));
+                $contractValue = (float) ($profile['contract_value'] ?? 0);
+
+                foreach (['procurement', 'budget_control'] as $profileType) {
+                    $targetProfile = $project->profiles()->where('type', $profileType)->first();
+                    if (! $targetProfile) {
+                        continue;
+                    }
+
+                    $fallbackValues = [];
+                    if ($projectCode !== '' && trim((string) $targetProfile->project_code) === '') {
+                        $fallbackValues['project_code'] = $projectCode;
+                    }
+                    if ($contractValue > 0 && (float) $targetProfile->nilai_kontrak <= 0) {
+                        $fallbackValues['nilai_kontrak'] = $contractValue;
+                    }
+
+                    if ($fallbackValues !== []) {
+                        $targetProfile->update($fallbackValues);
+                    }
+                }
+
+                $masterUpdates = [];
+                if (! empty($profile['project_code']) && trim((string) $profile['project_code']) !== '') {
+                    $masterUpdates['project_code'] = trim((string) $profile['project_code']);
+                }
+                if (! empty($profile['client_name']) && trim((string) $profile['client_name']) !== '') {
+                    $masterUpdates['client_name'] = trim((string) $profile['client_name']);
+                }
+                if (! empty($masterUpdates)) {
+                    $project->update($masterUpdates);
+                }
 
                 foreach ($indicators as $indicatorKey => $indicator) {
                     foreach ($periods as $period) {
@@ -1143,7 +1178,7 @@ class GoogleSheetsService
         ];
 
         $rows = $targetTitle !== null
-            ? $this->fetchSpreadsheetRange($targetSpreadsheetId, $targetTitle, 'UNFORMATTED_VALUE', 'A19:BD47')
+            ? $this->fetchSpreadsheetRange($targetSpreadsheetId, $targetTitle, 'UNFORMATTED_VALUE', 'A19:BD700')
             : [];
 
         if ($rows === []) {

@@ -4,10 +4,8 @@ import { computed } from "vue";
 interface DeviationItem {
   wbs_no: string;
   activity_name: string;
-  status: string;
-  latest_progress_percent: number;
-  planned_percent: number;
-  deviation_percent: number;
+  bobot_real: number;
+  bobot_plan: number;
 }
 
 const props = defineProps<{
@@ -16,36 +14,37 @@ const props = defineProps<{
 
 const worstItems = computed(() =>
   [...props.items]
-    .sort(
-      (left, right) =>
-        Math.abs(right.deviation_percent) - Math.abs(left.deviation_percent),
-    )
+    .map((item) => ({
+      ...item,
+      deviation: Number(item.bobot_real) - Number(item.bobot_plan),
+    }))
+    .filter((item) => Math.abs(item.deviation) > 0.00005)
+    .sort((left, right) => Math.abs(right.deviation) - Math.abs(left.deviation))
     .slice(0, 5),
 );
 
-function formatPercent(value: number): string {
-  return `${Number(value ?? 0).toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`;
+function formatWeight(value: number): string {
+  return `${Number(value ?? 0).toLocaleString("id-ID", { maximumFractionDigits: 4 })}%`;
 }
 </script>
 
 <template>
   <section
     aria-label="Deviasi WBS terbesar"
-    class="flex flex-col overflow-hidden rounded-2xl border-2 border-outline-variant bg-surface-lowest shadow-sm"
+    class="flex flex-col overflow-hidden rounded-2xl border border-outline-variant bg-surface-lowest shadow-sm"
   >
     <header
-      class="border-b border-outline-variant bg-primary-50 px-4 py-3 text-on-surface"
+      class="flex items-center justify-between gap-3 bg-surface-container-low px-5 py-4"
     >
-      <h3 class="text-title-md">Deviasi Terbesar</h3>
+      <h2 class="text-title-md font-semibold text-on-surface">
+        Deviasi Terbesar
+      </h2>
     </header>
-    <ol
-      v-if="worstItems.length"
-      class="space-y-2 p-3"
-    >
+    <ol v-if="worstItems.length" class="space-y-3 p-4">
       <li
         v-for="item in worstItems"
         :key="item.wbs_no"
-        class="rounded-2xl border-2 border-outline-variant bg-surface p-3 transition-shadow hover:shadow-sm"
+        class="rounded-xl border border-outline-variant/60 bg-surface p-4 transition-all hover:border-primary/40 hover:shadow-md"
       >
         <div class="flex items-start justify-between gap-2">
           <div class="min-w-0">
@@ -62,34 +61,29 @@ function formatPercent(value: number): string {
           <strong
             class="shrink-0 rounded px-2 py-1 text-xs tabular-nums"
             :class="
-              item.deviation_percent < 0
+              item.deviation < 0
                 ? 'bg-error-container text-error'
                 : 'bg-emerald-100 text-emerald-800'
             "
           >
-            {{ item.deviation_percent > 0 ? "+" : ""
-            }}{{ formatPercent(item.deviation_percent) }}
+            Deviasi {{ item.deviation > 0 ? "+" : "" }}{{
+              formatWeight(item.deviation)
+            }}
           </strong>
         </div>
-        <div class="mt-3 flex items-center justify-between gap-2 text-xs">
-          <span class="text-on-surface-variant">Progres aktual</span>
-          <span class="font-semibold tabular-nums text-on-surface">{{
-            formatPercent(item.latest_progress_percent)
-          }}</span>
-        </div>
-        <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-surface">
-          <div
-            class="h-full rounded-full bg-emerald-500"
-            :style="{
-              width: `${Math.min(100, Math.max(0, item.latest_progress_percent))}%`,
-            }"
-          />
-        </div>
-        <div class="mt-2 flex justify-between gap-2 text-xs tabular-nums">
-          <span class="text-on-surface-variant">Rencana</span>
-          <span class="font-medium text-on-surface-variant">{{
-            formatPercent(item.planned_percent)
-          }}</span>
+        <div class="mt-3 grid grid-cols-2 gap-3 border-t border-outline-variant/40 pt-3 text-xs tabular-nums">
+          <div class="flex flex-col gap-1">
+            <span class="text-on-surface-variant">Bobot Real</span>
+            <span class="font-semibold text-on-surface">{{
+              formatWeight(item.bobot_real)
+            }}</span>
+          </div>
+          <div class="flex flex-col gap-1 text-right">
+            <span class="text-on-surface-variant">Bobot Plan</span>
+            <span class="font-semibold text-on-surface">{{
+              formatWeight(item.bobot_plan)
+            }}</span>
+          </div>
         </div>
       </li>
     </ol>

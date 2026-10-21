@@ -49,6 +49,7 @@ const INDICATOR_ORDER = [
   "project_weekly_cumulative",
   "project_weekly_actual",
   "project_actual_cumulative",
+  "project_weekly_deviation",
   "deviation_vs_rkap",
 ];
 
@@ -59,6 +60,7 @@ const INDICATOR_LABELS = {
   project_weekly_cumulative: "Akumulasi Mingguan Proyek",
   project_weekly_actual: "Realisasi Mingguan Proyek",
   project_actual_cumulative: "Akumulasi Realisasi Proyek",
+  project_weekly_deviation: "Deviasi Proyek",
   deviation_vs_rkap: "Deviasi Proyek vs RKAP",
 };
 
@@ -157,17 +159,72 @@ const flatWeeks = computed(() =>
   monthGroups.value.flatMap((group) => group.weeks),
 );
 
-/** All 7 indicators, always in canonical order, even if the API order differs. */
-const orderedIndicators = computed(() =>
-  INDICATOR_ORDER.map((key) => {
+/** All indicators, always in canonical order, including computed Deviasi Proyek. */
+const orderedIndicators = computed(() => {
+  const actualObj = props.indicators.find(
+    (i) => i.key === "project_weekly_actual",
+  );
+  const planObj = props.indicators.find((i) => i.key === "project_weekly_plan");
+
+  const actualValues = actualObj?.values ?? [];
+  const planValues = planObj?.values ?? [];
+
+  // Calculate project_weekly_deviation: realisasi mingguan - rencana mingguan
+  const totalCols = Math.max(
+    props.periods.length,
+    actualValues.length,
+    planValues.length,
+  );
+  const deviationValues = [];
+
+  for (let idx = 0; idx < totalCols; idx++) {
+    const act = actualValues[idx];
+    const pln = planValues[idx];
+
+    if (
+      act === null ||
+      act === undefined ||
+      act === "" ||
+      pln === null ||
+      pln === undefined ||
+      pln === ""
+    ) {
+      // If actual is null or plan is null, check if either is defined
+      if (act !== null && act !== undefined && act !== "") {
+        const numAct = Number(act);
+        deviationValues.push(Number.isNaN(numAct) ? null : numAct);
+      } else {
+        deviationValues.push(null);
+      }
+    } else {
+      const numAct = Number(act);
+      const numPln = Number(pln);
+      if (Number.isNaN(numAct) || Number.isNaN(numPln)) {
+        deviationValues.push(null);
+      } else {
+        deviationValues.push(numAct - numPln);
+      }
+    }
+  }
+
+  return INDICATOR_ORDER.map((key) => {
+    if (key === "project_weekly_deviation") {
+      const found = props.indicators.find((i) => i.key === key);
+      return {
+        key,
+        label: found?.label ?? INDICATOR_LABELS[key],
+        values: found?.values ?? deviationValues,
+      };
+    }
+
     const found = props.indicators.find((i) => i.key === key);
     return {
       key,
       label: found?.label ?? INDICATOR_LABELS[key],
       values: found?.values ?? [],
     };
-  }),
-);
+  });
+});
 
 const hasData = computed(
   () => props.periods.length > 0 && orderedIndicators.value.length > 0,
@@ -202,7 +259,12 @@ const deviationClass = (value) => {
   }
 
   const num = Number(value);
-  if (Number.isNaN(num) || num === 0) return "text-on-surface-variant";
+  if (Number.isNaN(num)) return "text-on-surface-variant";
+
+  // Tambahkan kondisi khusus untuk angka 0
+  if (num === 0) {
+    return "text-yellow-800 font-semibold bg-yellow-100";
+  }
 
   return num < 0
     ? "text-error font-semibold bg-error/5"
@@ -222,14 +284,14 @@ const handleDownload = () => {
 
 <template>
   <div
-    class="overflow-hidden rounded-xl border border-outline-variant bg-surface-lowest shadow-sm"
+    class="overflow-hidden rounded-xl border-outline-variant bg-surface-lowest shadow-sm"
   >
     <!-- Header: title, filter, download -->
     <div
-      class="flex flex-col justify-between gap-4 border-b border-outline-variant bg-primary-50 px-6 py-5 text-on-surface lg:flex-row lg:items-center"
+      class="flex flex-col justify-between gap-4 border-outline-variant bg-white px-6 py-5 text-on-surface lg:flex-row lg:items-center"
     >
       <div class="space-y-1">
-        <h3 class="text-title-md">
+        <h3 class="font-semibold">
           Laporan Progress Pekerjaan Mingguan &amp; Akumulasi RKAP
         </h3>
         <p class="font-mono text-body-sm text-on-surface-variant">
@@ -241,9 +303,10 @@ const handleDownload = () => {
         <label class="text-label-caps text-on-surface-variant uppercase">
           Periode
         </label>
+        <!-- Filter / Select Periode -->
         <select
           :value="selectedMonth"
-          class="rounded border border-outline-variant bg-surface-lowest px-3 py-2 text-body-sm font-semibold text-on-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          class="h-10 px-3 py-2 bg-surface-bright border border-outline-variant rounded-lg text-body-sm focus:ring-2 focus:ring-primary outline-none cursor-pointer text-on-surface"
           @change="emit('update:selectedMonth', $event.target.value)"
         >
           <option
@@ -255,9 +318,10 @@ const handleDownload = () => {
           </option>
         </select>
 
+        <!-- Tombol Download -->
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded bg-primary px-4 py-2 text-body-sm font-bold text-on-primary shadow-sm transition hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+          class="h-10 px-4 text-white font-semibold rounded-lg transition-all active:scale-95 text-body-sm flex items-center gap-2 bg-primary hover:bg-primary-fixed-dim disabled:cursor-not-allowed disabled:opacity-50"
           :disabled="isLoading || !hasData"
           @click="handleDownload"
         >
@@ -319,7 +383,7 @@ const handleDownload = () => {
     <div
       ref="tableContainerRef"
       v-else
-      class="overflow-x-auto rounded-xl border border-outline-variant"
+      class="overflow-x-auto border border-outline-variant"
     >
       <table
         :class="[
@@ -334,7 +398,7 @@ const handleDownload = () => {
           <tr class="bg-primary text-white">
             <th
               rowspan="2"
-              class="sticky left-0 z-30 min-w-[220px] border-r border-outline-variant/50 bg-primary px-4 py-2 text-left text-[11px] font-extrabold tracking-wider text-white uppercase"
+              class="sticky left-0 z-30 min-w-[220px] bg-primary px-4 py-2 text-left text-[11px] font-extrabold tracking-wider text-white uppercase"
             >
               Indikator
             </th>
@@ -349,12 +413,12 @@ const handleDownload = () => {
           </tr>
 
           <!-- Week row -->
-          <tr class="bg-surface text-on-surface-variant">
+          <tr class="bg-primary text-white">
             <th
               v-for="week in flatWeeks"
               :key="`hdr-${week.label}-${week.index}`"
               :class="[
-                'border-b border-outline-variant/60 px-1 py-1.5 text-center text-body-sm font-bold',
+                'border border-outline-variant/40 px-1 py-1.5 text-center text-body-sm font-bold',
                 selectedMonth === 'all'
                   ? 'min-w-[64px]'
                   : 'min-w-[100px] w-1/4',
@@ -385,7 +449,9 @@ const handleDownload = () => {
               :key="`cell-${indicator.key}-${week.index}`"
               class="min-w-[64px] border-b border-outline-variant/60 px-1 py-2.5 text-center text-body-sm font-semibold tabular-nums"
               :class="
-                indicator.key === 'deviation_vs_rkap'
+                ['deviation_vs_rkap', 'project_weekly_deviation'].includes(
+                  indicator.key,
+                )
                   ? deviationClass(indicator.values[week.index])
                   : 'text-on-surface-variant'
               "

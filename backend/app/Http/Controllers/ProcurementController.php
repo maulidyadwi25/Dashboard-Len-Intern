@@ -70,17 +70,23 @@ class ProcurementController extends Controller
             // Compute summary stats for the chart
             $statusCounts = $items->groupBy('status')->map->count();
             $profile = $activeMasterProject->procurementProfile ?: $activeMasterProject->profile('procurement') ?: $activeMasterProject->profile();
+            $progressProfile = $activeMasterProject->progressRevenueProfile;
+
+            $profileNilaiKontrak = (float) ($profile?->nilai_kontrak ?? 0);
+            $contractValue = $profileNilaiKontrak > 0
+                ? $profileNilaiKontrak
+                : (float) ($progressProfile?->nilai_kontrak > 0 ? $progressProfile->nilai_kontrak : $activeMasterProject->net_contract_value);
 
             return response()->json([
                 'project' => [
                     'id' => $activeMasterProject->id,
-                    'code' => $activeMasterProject->project_code,
-                    'project_code' => $activeMasterProject->project_code,
+                    'code' => $profile?->project_code ?: $activeMasterProject->project_code,
+                    'project_code' => $profile?->project_code ?: $activeMasterProject->project_code,
                     'name' => $profile?->project_name ?? $activeMasterProject->project_name,
                     'leader_name' => $profile?->nama_pimpro ?? $activeMasterProject->leader_name,
-                    'client_name' => $activeMasterProject->client_name,
-                    'analyst_name' => $profile?->nama_PA ?? 'KURNIAWAN',
-                    'contract_value' => (float) ($profile?->nilai_kontrak ?? $activeMasterProject->net_contract_value),
+                    'client_name' => $profile?->client_name ?: $activeMasterProject->client_name,
+                    'analyst_name' => $profile?->nama_PA ?? $activeMasterProject->leader_name,
+                    'contract_value' => $contractValue,
                     'spreadsheet_url' => $activeMasterProject->spreadsheet_url,
                 ],
                 'items' => $items->values(),

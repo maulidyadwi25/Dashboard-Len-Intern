@@ -44,19 +44,9 @@ const selectedMonth = ref("all");
 const weekSummary = ref({ week_label: "", items: [] });
 const weekSummaryLoading = ref(true);
 const weekSummaryError = ref("");
-const isWbsEditing = ref(false);
 const hasUnsavedWbsChanges = ref(false);
 const showWbsDiscardDialog = ref(false);
 let resolveRouteLeave = null;
-
-function requestCancelWbsEdit() {
-  if (!hasUnsavedWbsChanges.value) {
-    isWbsEditing.value = false;
-    return;
-  }
-
-  showWbsDiscardDialog.value = true;
-}
 
 function keepWbsChanges() {
   showWbsDiscardDialog.value = false;
@@ -70,21 +60,11 @@ function keepWbsChanges() {
 function discardWbsChanges() {
   showWbsDiscardDialog.value = false;
   hasUnsavedWbsChanges.value = false;
-  isWbsEditing.value = false;
 
   if (resolveRouteLeave) {
     resolveRouteLeave(true);
     resolveRouteLeave = null;
   }
-}
-
-function toggleWbsEdit() {
-  if (!isWbsEditing.value) {
-    isWbsEditing.value = true;
-    return;
-  }
-
-  requestCancelWbsEdit();
 }
 
 onBeforeRouteLeave(() => {
@@ -191,6 +171,7 @@ const projectMeta = computed(() => {
     return {
       title: "Progress & Revenue",
       code: "-",
+      client: "-",
       nilaiKontrak: "-",
       pimpinanProyek: "-",
       projectAnalyst: "-",
@@ -200,9 +181,10 @@ const projectMeta = computed(() => {
   return {
     title: p.project_name || "-",
     code: p.project_code || "-",
+    client: p.client_name || "-",
     nilaiKontrak: formatContractValue(p.contract_value),
-    pimpinanProyek: p.project_lead_name || "-",
-    projectAnalyst: p.report_owner_name || "-",
+    pimpinanProyek: p.project_lead_name || p.pimpro || "-",
+    projectAnalyst: p.report_owner_name || p.analyst || "-",
   };
 });
 
@@ -245,7 +227,7 @@ function downloadWbsPdf() {
     <ExecutiveHeader />
 
     <main
-      class="mx-auto flex w-full max-w-container-max flex-1 flex-col gap-section-gap px-4 py-6 sm:px-6"
+      class="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 py-6 space-y-2"
     >
       <ProjectSelectorBar />
 
@@ -264,14 +246,12 @@ function downloadWbsPdf() {
 
       <section
         aria-label="WBS Monitoring"
-        class="space-y-section-gap border-t border-outline-variant pt-6"
+        class="space-y-section-gap border-outline-variant pt-6"
         :aria-busy="wbsLoading || wbsWeeklyLoading"
       >
         <WbsSummaryCards
           :summary="wbsSummary"
-          :editing="isWbsEditing"
           :can-download="wbsItems.length > 0"
-          @toggle-edit="toggleWbsEdit"
           @download="downloadWbsPdf"
         />
 
@@ -315,15 +295,12 @@ function downloadWbsPdf() {
             :expanded="wbsExpanded"
             :periods="wbsPeriods"
             :weekly-by-wbs="weeklyByWbs"
-            :is-editing="isWbsEditing"
             :saving-wbs-no="savingWbsNo"
             :progress-errors="progressErrors"
             :save-progress-batch="saveProgressBatch"
             @toggle="toggleExpanded"
             @clear-progress-error="clearProgressError"
             @dirty-change="hasUnsavedWbsChanges = $event"
-            @cancel-requested="requestCancelWbsEdit"
-            @finish-edit="isWbsEditing = false"
           />
         </section>
         <section

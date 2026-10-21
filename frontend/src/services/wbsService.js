@@ -33,44 +33,52 @@ function withWbsErrorHandling(request) {
 
 export const wbsService = {
   getWbs(id) {
+    if (!id) return Promise.reject(new Error("Project ID is required."));
     return withWbsErrorHandling(() => api.get(`/projects/${id}/wbs`));
   },
 
   getWbsWeekly(id, month = "all") {
+    if (!id) return Promise.reject(new Error("Project ID is required."));
     return withWbsErrorHandling(() =>
       api.get(`/projects/${id}/wbs/weekly`, { params: { month } }),
     );
   },
 
   getWeekSummary(id) {
+    if (!id) return Promise.reject(new Error("Project ID is required."));
     return withWbsErrorHandling(() =>
       api.get(`/projects/${id}/wbs/week-summary`),
     );
   },
 
   getAiSummary(id) {
+    if (!id) return Promise.reject(new Error("Project ID is required."));
     return withWbsErrorHandling(() =>
       api.get(`/projects/${id}/wbs/ai-summary`),
     );
   },
 
   generateAiSummary(id) {
+    if (!id) return Promise.reject(new Error("Project ID is required."));
     return withWbsErrorHandling(() =>
       api.post(`/projects/${id}/wbs/ai-summary`),
     );
   },
 
   saveAiSummary(id, content) {
+    if (!id) return Promise.reject(new Error("Project ID is required."));
     return withWbsErrorHandling(() =>
       api.put(`/projects/${id}/wbs/ai-summary`, { content }),
     );
   },
 
   syncWbs(id) {
+    if (!id) return Promise.reject(new Error("Project ID is required."));
     return withWbsErrorHandling(() => api.post(`/projects/${id}/wbs/sync`));
   },
 
   updateWbsProgress(id, wbsNo, percent) {
+    if (!id) return Promise.reject(new Error("Project ID is required."));
     return withWbsErrorHandling(() =>
       api.put(`/projects/${id}/wbs/${encodeURIComponent(wbsNo)}/progress`, {
         percent,

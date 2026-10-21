@@ -15,9 +15,22 @@ class ProjectDashboardController extends Controller
     public function index(): JsonResponse
     {
         $projects = MasterProject::query()
+            ->with(['progressRevenueProfile'])
             ->where('is_active', true)
             ->orderBy('id')
-            ->get(['id', 'project_code', 'project_name']);
+            ->get()
+            ->map(function (MasterProject $project) {
+                $pr = $project->progressRevenueProfile;
+
+                return [
+                    'id' => $project->id,
+                    'project_code' => $pr?->project_code ?: $project->project_code,
+                    'project_name' => $pr?->project_name ?: $project->project_name,
+                    'client_name' => $pr?->client_name ?: $project->client_name,
+                    'pimpro' => $pr?->nama_pimpro ?: $project->leader_name,
+                    'analyst' => $pr?->nama_PA ?: null,
+                ];
+            });
 
         return response()->json([
             'status' => 'success',

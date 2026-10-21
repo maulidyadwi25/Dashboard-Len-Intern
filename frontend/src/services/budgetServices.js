@@ -6,6 +6,9 @@ export const budgetService = {
   },
 
   getDashboardData(projectId) {
+    if (!projectId) {
+      return Promise.reject(new Error("Project ID is required."));
+    }
     return api.get(`/projects/${projectId}/dashboard`);
   },
 
@@ -13,16 +16,26 @@ export const budgetService = {
     return api.post("/budget-dashboard", payload);
   },
 
-  downloadPdfReport() {
-    return api.get("/budget-dashboard/pdf", { responseType: "blob" });
+  downloadPdfReport(projectId) {
+    if (!projectId) {
+      return Promise.reject(new Error("Project ID is required."));
+    }
+    return api.get("/budget-dashboard/pdf", {
+      params: { project_id: projectId },
+      responseType: "blob",
+    });
   },
 
-  getGanttTasks() {
-    return api.get("/gantt-tasks");
+  getGanttTasks(projectId) {
+    return api.get("/gantt-tasks", {
+      params: projectId ? { project_id: projectId } : {},
+    });
   },
 
-  getProcurementData() {
-    return api.get("/procurement");
+  getProcurementData(projectId) {
+    return api.get("/procurement", {
+      params: projectId ? { project_id: projectId } : {},
+    });
   },
 
   updateProcurementStartDate(itemId, newDate) {
@@ -32,6 +45,9 @@ export const budgetService = {
   },
 
   getProgressRevenueData(projectId, month = "all") {
+    if (!projectId) {
+      return Promise.reject(new Error("Project ID is required."));
+    }
     return api.get(`/projects/${projectId}/progress-revenue`, {
       params: { month },
     });

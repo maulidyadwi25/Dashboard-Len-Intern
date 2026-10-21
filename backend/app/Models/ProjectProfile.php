@@ -11,6 +11,8 @@ class ProjectProfile extends Model
         'project_id',
         'type',
         'project_name',
+        'project_code',
+        'client_name',
         'nama_PA',
         'nama_pimpro',
         'nilai_kontrak',

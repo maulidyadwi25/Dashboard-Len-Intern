@@ -73,7 +73,17 @@ class WbsController extends Controller
         $year = $this->resolveYear($project);
         $month = $this->resolveMonthFilter($request);
 
-        $periods = collect($sheets->wbsWeekPeriods($year))
+        $currentYear = (int) now('Asia/Jakarta')->year;
+        $lastProgressYear = (int) WbsProgressEntry::query()
+            ->where('master_project_id', $project->id)
+            ->max('year');
+        $lastValueYear = (int) WbsWeeklyValue::query()
+            ->join('progress_wbs_items', 'progress_wbs_items.id', '=', 'progress_wbs_weekly_values.progress_wbs_item_id')
+            ->where('progress_wbs_items.master_project_id', $project->id)
+            ->max('progress_wbs_weekly_values.year');
+        $lastYear = max($year, $currentYear, $lastProgressYear, $lastValueYear);
+        $periods = collect(range(min($year, $currentYear), $lastYear))
+            ->flatMap(fn (int $periodYear) => $sheets->wbsWeekPeriods($periodYear))
             ->when($month !== null, fn (Collection $periods) => $periods->where('month', $month)->values())
             ->all();
 
@@ -358,18 +368,6 @@ class WbsController extends Controller
             ], 422);
         }
 
-        $hasCompletedEntry = $project->wbsProgressEntries()
-            ->where('wbs_no', $wbsNo)
-            ->where('percent', 100)
-            ->exists();
-
-        if ($hasCompletedEntry) {
-            return response()->json([
-                'status' => 'error',
-                'message' => "WBS item [{$wbsNo}] already has a 100% progress entry and cannot receive additional input.",
-            ], 422);
-        }
-
         $weekInfo = WbsDateHelper::resolveWeekInfo(now('Asia/Jakarta'));
 
         $entry = WbsProgressEntry::query()->updateOrCreate(
@@ -483,6 +481,14 @@ class WbsController extends Controller
             $item->actual_finish_week = $children->map(fn (WbsItem $child) => $child->actual_finish_week ?? 0)
                 ->filter(fn ($value) => $value > 0)
                 ->max();
+            $item->plan_start_ordinal = $children->pluck('plan_start_ordinal')->filter(fn ($value) => $value !== null)->min();
+            $item->plan_end_ordinal = $children->pluck('plan_end_ordinal')->filter(fn ($value) => $value !== null)->max();
+            $item->actual_start_ordinal = $children->pluck('actual_start_ordinal')->filter(fn ($value) => $value !== null)->min();
+            $item->actual_finish_ordinal = $children->pluck('actual_finish_ordinal')->filter(fn ($value) => $value !== null)->max();
+            $item->actual_progress_start_ordinal = $children->pluck('actual_progress_start_ordinal')->filter(fn ($value) => $value !== null)->min();
+            $item->actual_progress_finish_ordinal = $children->every(fn (WbsItem $child) => $child->actual_progress_finish_ordinal !== null)
+                ? $children->pluck('actual_progress_finish_ordinal')->max()
+                : null;
             $childSources = $children->pluck('actual_source')->filter()->unique()->values();
             $item->actual_source = $childSources->contains('mixed') || $childSources->count() > 1
                 ? 'mixed'
@@ -520,7 +526,9 @@ class WbsController extends Controller
                 (int) $entries->first()->week,
             )
             : null;
-        $completedEntry = $entries->first(fn (WbsProgressEntry $entry) => (float) $entry->percent >= 100.0);
+        $completedEntry = $latestProgress && (float) $latestProgress->percent >= 100.0
+            ? $latestProgress
+            : null;
         $webFinishOrdinal = $completedEntry
             ? WbsDateHelper::periodOrdinal(
                 (int) $completedEntry->year,
@@ -547,22 +555,32 @@ class WbsController extends Controller
                 : ($sheetProvidesStart ? 'sheet' : 'web');
         }
 
-        $actualStartWeek = $actualStartOrdinal !== null
-            ? $actualStartOrdinal - ($year * 48)
+        $actualStartWeek = $actualStartOrdinal !== null ? $actualStartOrdinal - ($year * 48) : null;
+        $actualFinishWeek = $actualFinishOrdinal !== null ? $actualFinishOrdinal - ($year * 48) : null;
+        $sheetPlanStartOrdinal = $item->plan_start_period
+            ? WbsDateHelper::periodOrdinalFromLabel((string) $item->plan_start_period, $year)
             : null;
-        $actualFinishWeek = $actualFinishOrdinal !== null
-            ? $actualFinishOrdinal - ($year * 48)
+        $sheetPlanEndOrdinal = $item->plan_end_period
+            ? WbsDateHelper::periodOrdinalFromLabel((string) $item->plan_end_period, $year)
             : null;
-
-        $planEndOrdinal = $this->resolvePlanEndOrdinal((string) $item->plan_end_period, $year);
-        $currentWeekOrdinal = $this->resolveCurrentWeekOrdinal($year);
-        $status = $this->resolveDerivedLeafStatus($actualStartWeek, $planEndOrdinal, $currentWeekOrdinal, $actualFinishWeek);
+        $planStartOrdinal = $sheetPlanStartOrdinal;
+        $planEndOrdinal = $sheetPlanEndOrdinal;
+        $currentWeekOrdinal = $this->currentAbsoluteWeekOrdinal();
+        $status = $this->resolveDerivedLeafStatus($actualStartOrdinal, $planEndOrdinal, $currentWeekOrdinal, $actualFinishOrdinal);
 
         return [
             'latest_progress_percent' => $latestPercent,
             'bobot_real' => round($bobotReal, 4),
             'actual_start_week' => $actualStartWeek,
             'actual_finish_week' => $actualFinishWeek,
+            'actual_start_ordinal' => $actualStartOrdinal,
+            'actual_finish_ordinal' => $actualFinishOrdinal,
+            'actual_progress_start_ordinal' => $webStartOrdinal,
+            'actual_progress_finish_ordinal' => $webFinishOrdinal,
+            'plan_start_ordinal' => $planStartOrdinal,
+            'plan_end_ordinal' => $planEndOrdinal,
+            'plan_start_period' => $item->plan_start_period,
+            'plan_end_period' => $item->plan_end_period,
             'actual_source' => $actualSource,
             'status' => $status,
         ];
@@ -640,11 +658,20 @@ class WbsController extends Controller
         return $absolute - ($year * 48);
     }
 
-    private function resolveCurrentWeekOrdinal(int $year): int
+    private function currentAbsoluteWeekOrdinal(): int
     {
         $info = WbsDateHelper::resolveWeekInfo(now('Asia/Jakarta'));
 
-        return WbsDateHelper::periodOrdinal($year, (int) $info['month'], (int) $info['week']) - ($year * 48);
+        return WbsDateHelper::periodOrdinal((int) $info['year'], (int) $info['month'], (int) $info['week']);
+    }
+
+    private function periodLabelFromOrdinal(int $ordinal): string
+    {
+        $weekOfYear = (($ordinal - 1) % 48) + 1;
+        $month = intdiv($weekOfYear - 1, 4) + 1;
+        $week = (($weekOfYear - 1) % 4) + 1;
+
+        return WbsDateHelper::periodLabel($month, $week);
     }
 
     /**
@@ -687,6 +714,7 @@ class WbsController extends Controller
                 'status' => $item->status ?? 'not_started',
                 'latest_progress_percent' => round($latestProgress, 2),
                 'bobot_plan' => (float) $item->bobot_plan,
+                'bobot_real' => (float) $item->bobot_real,
                 'planned_percent' => round($plannedPercent, 2),
                 'deviation_percent' => round($latestProgress - $plannedPercent, 2),
             ];

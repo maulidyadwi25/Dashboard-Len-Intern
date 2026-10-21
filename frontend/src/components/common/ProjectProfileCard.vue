@@ -5,14 +5,65 @@ defineProps({
   projectInfo: {
     type: Object,
     default: () => ({
-      title: "Radar GCI Infrastructure Phase II",
-      code: "1LC-522UD019",
-      nilaiKontrak: "Rp 125,8 M",
-      pimpinanProyek: "Marcus S. / Syahr...",
-      projectAnalyst: "Lutfhi Nur Amali",
+      title: "Title Default",
+      code: "Kode Default",
+      nilaiKontrak: 0, // angka mentah (IDR) atau string format Indonesia "Rp 1.500.000.000"
+      pimpinanProyek: "Pimpro Default",
+      projectAnalyst: "PA Default",
     }),
   },
 });
+
+// Format nilai kontrak → T / M / Jt, tanpa desimal nol ekor
+const formatNilaiKontrak = (nilai) => {
+  if (nilai === null || nilai === undefined || nilai === "" || nilai === "-") return "-";
+
+  let num;
+
+  if (typeof nilai === "number") {
+    num = nilai;
+  } else if (typeof nilai === "string") {
+    // Hapus prefix "Rp" dan spasi
+    let s = nilai.replace(/^Rp\s*/i, "").trim();
+
+    // Lepas sufiks satuan (T, M, Jt, Miliar, Triliun, dst.)
+    s = s.replace(/\s*[TtMmJj][a-zA-Z]*\s*$/, "").trim();
+
+    const hasDot   = s.includes(".");
+    const hasComma = s.includes(",");
+
+    if (hasDot && hasComma) {
+      // "1.500.000.000,50" → titik=ribuan, koma=desimal
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else if (hasComma && !hasDot) {
+      // "7,78" → koma=desimal Indonesia
+      s = s.replace(",", ".");
+    } else if (hasDot && !hasComma) {
+      // "150.000.000.000" dari toLocaleString("id-ID") → titik=ribuan
+      // BUKAN JS float (JS float tidak punya banyak titik)
+      // Heuristik: jika ada lebih dari 1 titik, atau titik setelah >3 digit → ribuan
+      const parts = s.split(".");
+      const isThousands = parts.length > 2 || (parts[0].length > 3);
+      if (isThousands) {
+        s = s.replace(/\./g, "");
+      }
+      // else: 1 titik dengan ≤3 digit sebelumnya → JS float, parse langsung
+    }
+
+    num = Number(s);
+  }
+
+  if (!Number.isFinite(num) || num === 0) return "Rp 0";
+
+  const fmt = (v) =>
+    v % 1 === 0 ? v.toFixed(0) : v.toFixed(2).replace(/\.?0+$/, "").replace(".", ",");
+
+  if (num >= 1_000_000_000_000) return `Rp ${fmt(num / 1_000_000_000_000)} T`;
+  if (num >= 1_000_000_000)     return `Rp ${fmt(num / 1_000_000_000)} M`;
+  if (num >= 1_000_000)         return `Rp ${fmt(num / 1_000_000)} Jt`;
+
+  return `Rp ${num.toLocaleString("id-ID")}`;
+};
 </script>
 
 <template>
@@ -41,13 +92,13 @@ defineProps({
       </div>
 
       <!-- Right: Metadata Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <!-- Nilai Kontrak -->
         <div
           class="bg-slate-50/80 border border-slate-100 rounded-xl p-3 flex items-center gap-3"
         >
           <div
-            class="w-10 h-10 rounded-lg bg-blue-100/70 text-blue-600 flex items-center justify-center shrink-0"
+            class="w-10 h-10 rounded-lg bg-emerald-100/70 text-emerald-600 flex items-center justify-center shrink-0"
           >
             <CreditCard class="w-5 h-5" />
           </div>
@@ -58,7 +109,7 @@ defineProps({
               Nilai Kontrak
             </p>
             <p class="text-sm font-extrabold text-slate-900 mt-0.5">
-              {{ projectInfo.nilaiKontrak }}
+              {{ formatNilaiKontrak(projectInfo.nilaiKontrak) }}
             </p>
           </div>
         </div>

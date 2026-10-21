@@ -1,19 +1,21 @@
 <script setup>
 import { ref, onMounted, computed, watch } from "vue";
+import { Globe, ChevronDown, FileDown } from "lucide-vue-next";
 import { budgetService } from "@/services/budgetServices";
 import { generateBudgetPdf } from "@/utils/pdfExport";
 import { useCurrency } from "@/composables/useCurrency";
 import { useProject } from "@/composables/useProject";
 
-import Navbar from "@/components/budget-monitoring/Navbar.vue";
+import ExecutiveHeader from "@/components/common/ExecutiveHeader.vue";
 import Footer from "@/components/common/Footer.vue";
 import ProjectSelectorBar from "@/components/common/ProjectSelectorBar.vue";
-import ProjectHeader from "@/components/budget-monitoring/ProjectHeader.vue";
+import ProjectProfileCard from "@/components/common/ProjectProfileCard.vue";
 import BudgetSummaryCards from "@/components/budget-monitoring/BudgetSummaryCards.vue";
 import BudgetBreakdownTable from "@/components/budget-monitoring/BudgetBreakdownTable.vue";
 
 const { selectedCurrency, exchangeRates, formatCurrency } = useCurrency();
 const { activeProjectId } = useProject();
+const currencies = ["IDR", "USD", "EUR", "SGD"];
 
 const isLoading = ref(true);
 const errorMessage = ref("");
@@ -61,8 +63,32 @@ const fetchDashboardData = async () => {
       .map(Number)
       .find((value) => Number.isFinite(value) && value > 0);
 
+    const progressRevenueProfile = payload.profiles?.find(
+      (profile) => profile.type === "progress_revenue",
+    );
+
     normalizedSheetData.metadata = {
       ...normalizedSheetData.metadata,
+      nama_client:
+        progressRevenueProfile?.client_name ||
+        payload.client_name ||
+        normalizedSheetData.metadata?.nama_client ||
+        "-",
+      kode_proyek:
+        progressRevenueProfile?.project_code ||
+        payload.project_code ||
+        normalizedSheetData.metadata?.kode_proyek ||
+        "-",
+      nama_pimpro:
+        progressRevenueProfile?.nama_pimpro ||
+        payload.pimpro ||
+        normalizedSheetData.metadata?.nama_pimpro ||
+        "-",
+      nama_pa:
+        progressRevenueProfile?.nama_PA ||
+        payload.analyst ||
+        normalizedSheetData.metadata?.nama_pa ||
+        "-",
       net_contract_value:
         contractValue ??
         Number(normalizedSheetData.metadata?.net_contract_value ?? 0),
@@ -98,7 +124,16 @@ const metadata = computed(() => ({
   lastUpdate: sheetData.value?.metadata?.tanggal_update || "-",
   namaPimpro: sheetData.value?.metadata?.nama_pimpro || "-",
   namaClient: sheetData.value?.metadata?.nama_client || "-",
+  namaPA: sheetData.value?.metadata?.nama_pa || "-",
   netContractValue: Number(sheetData.value?.metadata?.net_contract_value || 0),
+}));
+
+const projectMeta = computed(() => ({
+  title: metadata.value.projectName,
+  code: metadata.value.projectCode,
+  nilaiKontrak: metadata.value.netContractValue,
+  pimpinanProyek: metadata.value.namaPimpro,
+  projectAnalyst: metadata.value.namaPA,
 }));
 
 const summary = computed(
@@ -126,9 +161,13 @@ const handleDownloadPdf = () => {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-[#f8fafc] font-sans text-slate-800">
-    <Navbar />
-    <main class="mx-auto w-full max-w-7xl flex-1 space-y-6 px-6 py-8">
+  <div
+    class="flex min-h-screen flex-col bg-[#f8fafc] font-sans text-slate-800 antialiased"
+  >
+    <ExecutiveHeader />
+    <main
+      class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-6 space-y-2"
+    >
       <ProjectSelectorBar />
 
       <!-- State Loading -->
@@ -157,11 +196,50 @@ const handleDownloadPdf = () => {
 
       <!-- State Data Loaded -->
       <template v-else>
-        <ProjectHeader
-          :metadata="metadata"
-          :estimasi-kebutuhan="summary.estimasi_kebutuhan"
-          @download="handleDownloadPdf"
-        />
+        <!-- Project Profile Card (consistent with Progress & Revenue and Procurement) -->
+        <ProjectProfileCard :projectInfo="projectMeta" />
+
+        <!-- Controls Toolbar (Currency Switcher & Download PDF) -->
+        <div
+          class="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl border border-slate-200/80 bg-white px-5 py-3 shadow-xs"
+        >
+          <div class="text-xs text-slate-500 font-medium">
+            Terakhir diperbarui:
+            <span class="font-semibold text-slate-700">{{
+              metadata.lastUpdate
+            }}</span>
+          </div>
+
+          <div class="flex items-center gap-3 self-end sm:self-auto">
+            <!-- Currency Dropdown -->
+            <div class="relative flex items-center">
+              <Globe
+                class="pointer-events-none absolute left-3 h-4 w-4 text-slate-400"
+              />
+              <select
+                v-model="selectedCurrency"
+                class="cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pr-8 pl-9 text-xs font-bold text-slate-700 transition hover:bg-slate-100 focus:border-blue-500 focus:bg-white focus:outline-none"
+              >
+                <option v-for="curr in currencies" :key="curr" :value="curr">
+                  {{ curr }}
+                </option>
+              </select>
+              <ChevronDown
+                class="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400"
+              />
+            </div>
+
+            <!-- Download Button -->
+            <button
+              @click="handleDownloadPdf"
+              class="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-blue-700 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95"
+            >
+              <FileDown class="h-4 w-4" />
+              <span>Download PDF</span>
+            </button>
+          </div>
+        </div>
+
         <BudgetSummaryCards :summary="summary" />
         <BudgetBreakdownTable :items="budgetList" :items-per-page="4" />
       </template>
