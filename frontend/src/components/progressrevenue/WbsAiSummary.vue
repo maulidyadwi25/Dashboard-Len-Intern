@@ -234,17 +234,19 @@ watch(
     aria-label="Ringkasan dan rekomendasi AI"
     class="flex min-h-[30rem] max-h-[70vh] flex-col overflow-hidden rounded-2xl border border-outline-variant/60 bg-surface-lowest shadow-sm transition-all"
   >
-    <!-- Header -->
+    <!-- Header Wrapper -->
     <header
-      class="flex flex-wrap items-center justify-between gap-3 bg-surface-container-low px-5 py-4 text-on-surface"
+      class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 bg-surface-container-low px-5 py-3.5 text-on-surface"
     >
-      <div>
-        <h3 class="text-title-md font-semibold">
+      <!-- Judul Section -->
+      <div class="min-w-0 flex-1">
+        <h3 class="text-title-md font-semibold text-on-surface leading-snug">
           Ringkasan &amp; Rekomendasi AI
         </h3>
       </div>
 
-      <div v-if="!editing" class="flex items-center gap-2">
+      <!-- Action Buttons (State Normal) -->
+      <div v-if="!editing" class="flex shrink-0 items-center gap-2">
         <button
           type="button"
           class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3.5 text-sm font-semibold text-on-primary shadow-sm transition-all hover:bg-primary-600 active:scale-95 disabled:cursor-wait disabled:opacity-50"
@@ -255,23 +257,25 @@ watch(
         >
           <LoaderCircle v-if="generating" class="h-4 w-4 animate-spin" />
           <RefreshCw v-else class="h-4 w-4" />
-          Generate ulang
+          <span>Generate ulang</span>
         </button>
+
         <button
           v-if="summary"
           type="button"
-          class="inline-flex h-9 items-center gap-2 rounded-lg bg-yellow-100 px-3.5 text-sm font-medium text-yellow-700 transition-colors hover:bg-yellow-200"
+          class="inline-flex h-9 items-center gap-2 rounded-lg border border-outline-variant/60 bg-surface px-3.5 text-sm font-medium text-on-surface transition-colors hover:bg-surface-container"
           :disabled="generating || loading"
           aria-label="Edit ringkasan AI"
           title="Edit ringkasan"
           @click="beginEdit"
         >
-          <Pencil class="h-4 w-4" />
-          Edit
+          <Pencil class="h-4 w-4 text-on-surface-variant" />
+          <span>Edit</span>
         </button>
       </div>
 
-      <div v-else class="flex items-center gap-2">
+      <!-- Action Buttons (State Edit Mode) -->
+      <div v-else class="flex shrink-0 items-center gap-2">
         <button
           type="button"
           class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-on-primary transition-all hover:bg-primary-600 disabled:opacity-50"
@@ -295,6 +299,9 @@ watch(
         </button>
       </div>
     </header>
+
+    <!-- Garis Pembatas (Menggantung / Tidak Sampai Ujung) -->
+    <div class="mx-5 border-b border-outline-variant/60"></div>
 
     <!-- Body Content -->
     <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
@@ -410,7 +417,7 @@ watch(
             <li
               v-for="(recommendation, index) in summary.content.recommendations"
               :key="`${recommendation.title}-${index}`"
-              class="group rounded-xl border border-outline-variant/50 bg-surface p-4 transition-all hover:border-primary/40 hover:shadow-sm"
+              class="group rounded-xl border border-outline-variant/50 bg-surface-lowest p-4 transition-all hover:border-primary/40 hover:shadow-sm"
             >
               <div class="flex items-start gap-2.5">
                 <span

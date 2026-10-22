@@ -291,7 +291,7 @@ const handleDownload = () => {
       class="flex flex-col justify-between gap-4 border-outline-variant bg-white px-6 py-5 text-on-surface lg:flex-row lg:items-center"
     >
       <div class="space-y-1">
-        <h3 class="font-semibold">
+        <h3 class="text-title-md font-semibold">
           Laporan Progress Pekerjaan Mingguan &amp; Akumulasi RKAP
         </h3>
         <p class="font-mono text-body-sm text-on-surface-variant">

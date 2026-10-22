@@ -242,81 +242,112 @@ export const generateProgressRevenuePdf = ({
   formatPercentage = (v) => (v === null || v === undefined ? "-" : v),
 }) => {
   const doc = new jsPDF("landscape", "pt", "a4");
+  const groupsPerPage = 3;
+  const pages = [];
+  for (let index = 0; index < monthGroups.length; index += groupsPerPage) {
+    pages.push(monthGroups.slice(index, index + groupsPerPage));
+  }
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(15);
-  doc.setTextColor(15, 23, 42);
-  doc.text("Laporan Progress Pekerjaan Mingguan & Akumulasi RKAP", 40, 45);
+  const printedAt = new Date().toLocaleString("id-ID", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
 
-  doc.setDrawColor(0, 82, 204);
-  doc.setLineWidth(1.5);
-  doc.line(40, 52, 802, 52);
+  if (pages.length === 0) pages.push([]);
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9.5);
-  doc.setTextColor(71, 85, 105);
-  doc.text(`Kode Proyek: ${projectCode}`, 40, 70);
-  doc.text(`Periode    : ${periodLabel}`, 40, 84);
-  doc.text(
-    `Tgl Cetak  : ${new Date().toLocaleString("id-ID", {
-      dateStyle: "short",
-      timeStyle: "short",
-    })}`,
-    650,
-    70,
-  );
+  pages.forEach((pageGroups, pageIndex) => {
+    if (pageIndex > 0) doc.addPage();
 
-  const head = [
-    [
-      "INDIKATOR",
-      ...monthGroups.flatMap((group) =>
-        Array(group.weeks.length).fill(group.label),
-      ),
-    ],
-    [
-      "",
-      ...monthGroups.flatMap((group) => group.weeks.map((w) => w.label)),
-    ],
-  ];
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = { left: 40, right: 40 };
+    const indicatorWidth = 190;
+    const weekCount = pageGroups.reduce(
+      (count, group) => count + group.weeks.length,
+      0,
+    );
+    const weekColumnWidth = weekCount > 0
+      ? Math.min(105, (pageWidth - margin.left - margin.right - indicatorWidth) / weekCount)
+      : 0;
 
-  const body = indicators.map((indicator) => [
-    indicator.label,
-    ...monthGroups.flatMap((group) =>
-      group.weeks.map(
-        (week) => formatPercentage(indicator.values?.[week.index]),
-      ),
-    ),
-  ]);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.setTextColor(15, 23, 42);
+    doc.text("Laporan Progress Pekerjaan Mingguan & Akumulasi RKAP", 40, 38);
 
-if (monthGroups.length === 0) {
-      doc.text('Tidak ada data progress & revenue untuk periode ini.', 40, 120);
-    } else {
-      const columnStyles = { 0: { halign: 'left', cellWidth: 150, fontStyle: 'bold' } };
-      // assign small width for week columns (indexes >=1)
-      monthGroups.forEach((g, gi) => {
-        g.weeks.forEach((w, wi) => {
-          const colIdx = 1 + monthGroups.slice(0, gi).reduce((sum, gr) => sum + gr.weeks.length, 0) + wi;
-          columnStyles[colIdx] = { halign: 'center', cellWidth: 30 };
-        });
-      });
-      autoTable(doc, {
-        startY: 100,
-        head,
-        body,
-        theme: 'grid',
-        headStyles: {
-          fillColor: [0, 82, 204],
-          textColor: 255,
-          fontStyle: 'bold',
-          halign: 'center',
-          fontSize: 7,
-        },
-        bodyStyles: { textColor: [30, 41, 59], fontSize: 7, halign: 'center' },
-        columnStyles,
-        styles: { cellPadding: 3, overflow: 'linebreak' },
-        margin: { left: 40, right: 40 },
-      });
+    doc.setDrawColor(0, 82, 204);
+    doc.setLineWidth(1.5);
+    doc.line(40, 47, pageWidth - 40, 47);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Kode Proyek: ${projectCode}`, 40, 65);
+    doc.text(`Periode: ${periodLabel}`, 40, 79);
+    if (pages.length > 1 && pageGroups.length > 0) {
+      const firstMonth = pageGroups[0].label;
+      const lastMonth = pageGroups[pageGroups.length - 1].label;
+      doc.text(
+        `Cakupan halaman: ${firstMonth}${firstMonth === lastMonth ? "" : ` - ${lastMonth}`}`,
+        40,
+        93,
+      );
     }
+    doc.text(`Tgl Cetak: ${printedAt}`, pageWidth - 190, 65);
+
+    if (pageGroups.length === 0) {
+      doc.text("Tidak ada data progress & revenue untuk periode ini.", 40, 120);
+      return;
+    }
+
+    const head = [
+      [
+        "INDIKATOR",
+        ...pageGroups.flatMap((group) =>
+          Array(group.weeks.length).fill(group.label),
+        ),
+      ],
+      [
+        "",
+        ...pageGroups.flatMap((group) => group.weeks.map((week) => week.label)),
+      ],
+    ];
+    const body = indicators.map((indicator) => [
+      indicator.label,
+      ...pageGroups.flatMap((group) =>
+        group.weeks.map((week) =>
+          formatPercentage(indicator.values?.[week.index]),
+        ),
+      ),
+    ]);
+    const columnStyles = {
+      0: { halign: "left", cellWidth: indicatorWidth, fontStyle: "bold" },
+    };
+    for (let column = 1; column <= weekCount; column += 1) {
+      columnStyles[column] = {
+        halign: "center",
+        cellWidth: weekColumnWidth,
+      };
+    }
+
+    autoTable(doc, {
+      startY: pages.length > 1 ? 105 : 92,
+      head,
+      body,
+      theme: "grid",
+      headStyles: {
+        fillColor: [0, 82, 204],
+        textColor: 255,
+        fontStyle: "bold",
+        halign: "center",
+        fontSize: 8,
+      },
+      bodyStyles: { textColor: [30, 41, 59], fontSize: 8, halign: "center" },
+      columnStyles,
+      styles: { cellPadding: 4, overflow: "linebreak", minCellHeight: 24 },
+      margin,
+      pageBreak: "avoid",
+    });
+  });
 
   const safeCode = (projectCode || "PROJECT").replace(/[^a-zA-Z0-9_-]/g, "_");
   doc.save(

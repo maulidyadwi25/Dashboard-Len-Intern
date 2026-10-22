@@ -60,6 +60,9 @@ function formatPercent(value: number): string {
       </span>
     </header>
 
+    <!-- Garis bawah terpisah -->
+    <div class="mx-5 border-b border-outline-variant"></div>
+
     <!-- State: Error, Loading, Empty -->
     <div
       v-if="error"
@@ -87,7 +90,7 @@ function formatPercent(value: number): string {
       <article
         v-for="item in criticalItems"
         :key="item.wbs_no"
-        class="group relative flex flex-col gap-3 rounded-xl border border-outline-variant/60 bg-surface p-4 transition-all hover:border-primary/40 hover:shadow-md"
+        class="group relative flex flex-col gap-3 rounded-xl border border-outline-variant/60 bg-surface-lowest p-4 transition-all hover:border-primary/40 hover:shadow-md"
       >
         <!-- Top Info: WBS, Name, & Status -->
         <div class="flex items-start justify-between gap-4">

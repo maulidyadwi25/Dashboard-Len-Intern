@@ -36,20 +36,16 @@ const bars = [
 </script>
 
 <template>
-  <section
-    aria-label="Ringkasan WBS"
-    class="flex flex-col overflow-hidden rounded-2xl border border-outline-variant bg-surface-lowest shadow-sm"
-  >
-    <header
-      class="flex items-center justify-between gap-2 border-outline-variant bg-surface-container-low px-5 py-4"
-    >
+  <section aria-label="Ringkasan WBS" class="flex flex-col gap-4">
+    <!-- Header (Tanpa background pembungkus & tanpa border luar) -->
+    <header class="flex items-center justify-between px-1">
       <h2 class="text-title-md font-semibold text-on-surface">Ringkasan WBS</h2>
     </header>
 
-    <!-- Grid Ringkasan -->
-    <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3">
+    <!-- Grid Ringkasan (Card kecil yang memiliki background & border) -->
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <article
-        class="rounded-xl border border-outline-variant/60 bg-surface p-4 transition-all hover:border-primary/40 hover:shadow-md"
+        class="rounded-2xl border border-outline-variant/60 bg-surface p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
       >
         <p
           class="flex items-center justify-between text-xs font-medium text-on-surface-variant"
@@ -66,7 +62,7 @@ const bars = [
       </article>
 
       <article
-        class="rounded-xl border border-outline-variant/60 bg-surface p-4 transition-all hover:border-primary/40 hover:shadow-md"
+        class="rounded-2xl border border-outline-variant/60 bg-surface p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
       >
         <p
           class="flex items-center justify-between text-xs font-medium text-on-surface-variant"
@@ -83,7 +79,7 @@ const bars = [
       </article>
 
       <article
-        class="rounded-xl border border-outline-variant/60 bg-surface p-4 transition-all hover:border-primary/40 hover:shadow-md"
+        class="rounded-2xl border border-outline-variant/60 bg-surface p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
       >
         <p
           class="flex items-center justify-between text-xs font-medium text-on-surface-variant"
@@ -100,8 +96,10 @@ const bars = [
       </article>
     </div>
 
-    <!-- Keterangan & Legenda -->
-    <div class="rounded-xl border border-outline-variant/60 bg-surface p-4">
+    <!-- Keterangan & Legenda (Card bawah yang memiliki background & border) -->
+    <div
+      class="rounded-2xl border border-outline-variant/60 bg-surface p-4 shadow-sm"
+    >
       <div
         class="flex flex-col lg:flex-row lg:items-center justify-between gap-4"
       >
@@ -151,17 +149,16 @@ const bars = [
 
         <!-- Tombol Aksi -->
         <div
-          class="flex shrink-0 items-center gap-2 pt-2 lg:pt-0 lg:border-l lg:border-slate-100 lg:pl-4"
+          class="flex shrink-0 items-center gap-2 pt-2 lg:pt-0 lg:border-l lg:border-outline-variant/40 lg:pl-4"
         >
           <button
             type="button"
-            class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-on-primary transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50 shadow-xs"
+            class="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-3.5 text-xs font-medium text-on-primary transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50 shadow-xs"
             :disabled="!canDownload"
-            aria-label="Download data WBS sebagai PDF"
-            title="Download PDF"
             @click="emit('download')"
           >
-            <Download class="h-4 w-4" />
+            <Download class="h-3.5 w-3.5" />
+            Download Gantt
           </button>
         </div>
       </div>
