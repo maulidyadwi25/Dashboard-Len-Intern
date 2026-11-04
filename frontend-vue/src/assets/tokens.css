@@ -1,0 +1,85 @@
+/* ============================================================
+   DESIGN TOKENS — Dashboard Len Intern (dari spek mentor)
+   Single source of truth untuk warna, font, shadow, dsb.
+   Dipakai via utility Tailwind (bg-primary-500, text-error, ...)
+   maupun CSS var (var(--color-primary-500)).
+   ============================================================ */
+
+@theme {
+  /* ---- Primary Colors ---- */
+  --color-primary-50: #e6efff; /* Lightest variant */
+  --color-primary-400: #3385ff; /* Hover/light variant */
+  --color-primary-500: #004ac6; /* Main primary color */
+  --color-primary-600: #003bb0; /* Dark variant */
+  --color-primary-700: #002d8a; /* Darker variant */
+  --color-primary-container: #2563eb; /* Container background */
+  --color-on-primary: #ffffff; /* Text on primary */
+
+  /* ---- Background & Surface ---- */
+  --color-background: #f7f9fb;
+  --color-surface: #f7f9fb;
+  --color-surface-lowest: #ffffff;
+  --color-surface-container: #eceef0;
+  --color-on-background: #191c1e;
+  --color-on-surface: #191c1e;
+  --color-on-surface-variant: #434655;
+
+  /* ---- Status Colors ---- */
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-secondary: #505f76;
+  --color-tertiary: #4d556b;
+
+  /* ---- Custom Project Colors (sama dgn default Tailwind, dikunci eksplisit) ---- */
+  --color-emerald-500: #10b981;
+  --color-emerald-400: #34d399;
+  --color-blue-500: #2563eb;
+  --color-slate-500: #64748b;
+
+  /* ---- Outline Colors ---- */
+  --color-outline: #737686;
+  --color-outline-variant: #c3c6d7;
+
+  /* ---- Typography ---- */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --text-display-xl: 28px;
+  --text-display-xl--line-height: 44px;
+  --text-display-xl--font-weight: 700;
+  --text-headline-lg: 30px;
+  --text-headline-lg--line-height: 38px;
+  --text-headline-lg--font-weight: 600;
+  --text-title-md: 20px;
+  --text-title-md--line-height: 28px;
+  --text-title-md--font-weight: 600;
+  --text-body-base: 16px;
+  --text-body-base--line-height: 24px;
+  --text-body-base--font-weight: 400;
+  --text-body-sm: 12px;
+  --text-body-sm--line-height: 16px;
+  --text-body-sm--font-weight: 400;
+  --text-label-caps: 12px;
+  --text-label-caps--line-height: 16px;
+  --text-label-caps--font-weight: 600;
+
+  /* ---- Box Shadows (sesuai spek) ---- */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+:root {
+  /* ---- Spacing (Custom, untuk dipakai manual bila perlu) ---- */
+  --element-gap: 1rem; /* 16px */
+  --page-margin-desktop: 2.5rem; /* 40px */
+  --page-margin-mobile: 1rem; /* 16px */
+  --container-max: 1280px;
+  --grid-gutter: 1.5rem; /* 24px */
+  --section-gap: 2rem; /* 32px */
+
+  /* ---- Border Radius (sama dgn default Tailwind, dikunci eksplisit) ---- */
+  --radius: 0.25rem; /* 4px */
+  --radius-lg: 0.5rem; /* 8px */
+  --radius-xl: 0.75rem; /* 12px */
+  --radius-full: 9999px; /* pill/circle */
+}

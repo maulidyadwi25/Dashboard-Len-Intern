@@ -1,17 +1,17 @@
 <template>
-  <div class="min-h-screen bg-gray-50 p-6">
-    <!-- Navbar / Header Atas -->
+  <div class="min-h-screen bg-gray-50 p-4 md:p-10">
+    <!-- Top Navigation -->
     <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
       <div class="flex flex-wrap items-center gap-6">
         <h1 class="text-2xl font-bold text-blue-900">Executive Command</h1>
 
         <!-- Project Dropdown Selector -->
-        <div v-if="projects.length > 0" class="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs">
-          <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Project:</span>
+        <div v-if="projects.length > 0" class="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg border border-outline-variant shadow-xs">
+          <span class="text-body-sm font-bold text-gray-500 uppercase tracking-wider">Project:</span>
           <select 
             v-model="selectedProjectId" 
             @change="onProjectChange"
-            class="bg-transparent text-xs font-bold text-gray-800 focus:outline-none cursor-pointer"
+            class="bg-transparent text-body-sm font-bold text-gray-800 focus:outline-none cursor-pointer"
           >
             <option value="all">All Projects</option>
             <option v-for="p in projects" :key="p.id" :value="p.id">
@@ -21,7 +21,7 @@
         </div>
 
         <nav class="flex items-center space-x-6 text-sm font-medium">
-          <!-- Navigasi Aktif Ke Project Monitoring -->
+          <!-- Main Navigation -->
           <router-link :to="projectMonitoringLink" class="text-blue-600 font-semibold border-b-2 border-blue-600 pb-1">
             Project Monitoring
           </router-link>
@@ -32,13 +32,13 @@
         </nav>
       </div>
 
-      <!-- Icon Profile & Notif -->
+      <!-- Profile & Notifications -->
       <div class="flex items-center space-x-3">
         <!-- Sync Database Button -->
         <button 
           @click="triggerSync" 
           :disabled="isSyncing"
-          class="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold border border-blue-200 transition-colors cursor-pointer disabled:opacity-50"
+          class="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-body-sm font-semibold border border-blue-200 transition-colors cursor-pointer disabled:opacity-50"
           title="Sinkronisasi data dari Google Sheets ke Database SQLite"
         >
           <svg :class="{ 'animate-spin': isSyncing }" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -78,7 +78,7 @@
           @update:description="projectDescription = $event"
           :key="(projectInfo.overallProgress || '') + '-' + (projectInfo.spiValue || '')" 
         />
-        <!-- Project Profile disembunyikan sementara
+        <!-- Project Profile (currently hidden)
         <ProjectProfileCard v-if="showProfile" :profile="projectProfile" />
         -->
         <GanttChart :gantt-data="ganttData" />
@@ -86,7 +86,7 @@
     </div>
 
     <!-- Footer -->
-    <div class="max-w-7xl mx-auto mt-12 flex justify-between text-xs text-gray-400">
+    <div class="max-w-7xl mx-auto mt-12 flex justify-between text-body-sm text-gray-400">
       <span>© 2026 Executive Project Monitoring Platform. All rights reserved.</span>
     </div>
   </div>

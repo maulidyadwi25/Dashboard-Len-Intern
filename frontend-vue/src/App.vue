@@ -1,6 +1,6 @@
 <template>
   <div id="app" class="font-sans antialiased">
-    <!-- Router View merender ViewPage sesuai URL (Project atau Procurement) -->
+    <!-- Page Content (Project or Procurement) -->
     <router-view />
   </div>
 </template>

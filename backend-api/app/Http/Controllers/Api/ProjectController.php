@@ -126,7 +126,8 @@ class ProjectController extends Controller
                         'message' => 'Gagal mengambil data dari Google Sheets API: ' . ($syncRes['message'] ?? ''),
                     ], 500);
                 }
-                $record = ProjectLink::where('master_project_id', $projectId)->first();
+                $record = ProjectLink::where('master_project_id', $projectId)
+                    ->where('sheet_key', 'procurement')->first();
             }
 
             $data = $record->data ?? [];
@@ -222,7 +223,7 @@ class ProjectController extends Controller
         $request->validate([
             'master_project_id' => 'required',
             'no' => 'required|string',
-            'field' => 'required|in:progress,priority,status',
+            'field' => 'required|in:progress,priority,status,kontrak_status,payment_priority,delivery_status',
             'value' => 'nullable|string',
         ]);
 
@@ -251,9 +252,19 @@ class ProjectController extends Controller
                 $dbValue = 'Medium';
                 $sheetValue = 'NORMAL';
             }
+        } elseif ($request->field === 'payment_priority') {
+            $p = strtolower(trim((string) $request->value));
+            if ($p === 'high') {
+                $dbValue = 'High';
+                $sheetValue = 'HIGH';
+            } elseif ($p === 'low') {
+                $dbValue = 'Low';
+                $sheetValue = 'LOW';
+            } else {
+                $dbValue = 'Medium';
+                $sheetValue = 'MEDIUM';
+            }
         } elseif ($request->field === 'progress') {
-            $sheetValue = strtoupper(trim((string) $request->value));
-            $dbValue = $sheetValue;
         }
 
         if ($procurement) {
@@ -274,6 +285,9 @@ class ProjectController extends Controller
                 'status' => 4,
                 'progress' => 5,
                 'priority' => 6,
+                'kontrak_status' => 18,
+                'payment_priority' => 53,
+                'delivery_status' => 55,
             ];
             $colIdx = $fieldColIndex[$request->field] ?? null;
             if ($colIdx !== null) {
@@ -288,8 +302,23 @@ class ProjectController extends Controller
             }
         }
 
-        // Write back to Google Sheet dinonaktifkan agar spreadsheet milik mentor aman dan tidak terubah dari website
+        // Write back ke Google Sheet mentor (sudah ada izin): tulis nilai ke sel yang sama
         $sheetWritten = false;
+        $colLetters = [
+            'status' => 'E',
+            'progress' => 'F',
+            'priority' => 'G',
+            'kontrak_status' => 'S',
+            'payment_priority' => 'BB',
+            'delivery_status' => 'BD',
+        ];
+        $colLetter = $colLetters[$request->field] ?? null;
+        if ($colLetter !== null) {
+            $sheetRow = $this->syncService->findProcurementRow($projectId, trim((string) $request->no));
+            if ($sheetRow !== null) {
+                $sheetWritten = $this->syncService->writeBackToSheet('6. Procurement', "{$colLetter}{$sheetRow}", (string) $sheetValue);
+            }
+        }
 
         return response()->json([
             'status' => 'success',
@@ -298,6 +327,133 @@ class ProjectController extends Controller
             'db_updated' => (bool) $procurement,
             'sheet_value' => $sheetValue,
         ]);
+    }
+
+    /**
+     * Simpan data termin (DP / Termin 1-6) + 2 kolom status dari halaman detail.
+     * Update: cache ProjectLink.data + write-back ke Google Sheet (per blok termin).
+     *
+     * Blok kolom (0-based index di sheet):
+     *   DP   = 25..28 (Z..AC),  Termin1 = 29..32 (AD..AG), ... Termin6 = 49..52 (AX..BA)
+     *   Payment Status  = 56..62 (BE..BK)  -> dp,t1..t6
+     *   Status Termin    = 63..69 (BL..BR) -> dp,t1..t6 (kolom baru)
+     */
+    public function updateProcurementTermin(Request $request)
+    {
+        $request->validate([
+            'master_project_id' => 'required',
+            'no' => 'required|string',
+            'termin_key' => 'required|in:dp,t1,t2,t3,t4,t5,t6',
+            'tanggal_submit' => 'nullable|string|max:64',
+            'nilai' => 'nullable|string|max:64',
+            'gr_ses' => 'nullable|string|max:64',
+            'no_spp' => 'nullable|string|max:64',
+            'status_termin' => 'nullable|string|max:32',
+            'payment_status' => 'nullable|string|max:32',
+        ]);
+
+        $mp = MasterProject::find($request->master_project_id)
+            ?? MasterProject::where('spreadsheet_id', $request->master_project_id)->first()
+            ?? MasterProject::first();
+        $projectId = $mp?->id ?? (int) $request->master_project_id;
+        $no = trim((string) $request->no);
+        $key = $request->termin_key;
+
+        $blockStart = match ($key) {
+            'dp' => 25,
+            't1' => 29,
+            't2' => 33,
+            't3' => 37,
+            't4' => 41,
+            't5' => 45,
+            't6' => 49,
+        };
+        $offset = $key === 'dp' ? 0 : (int) substr($key, 1); // 0..6
+        $paymentStatusIdx = 56 + $offset;
+        $terminStatusIdx = 63 + $offset;
+
+        // Normalisasi status (sheet pakai huruf besar)
+        $normStatus = function (?string $v): ?string {
+            if ($v === null) {
+                return null;
+            }
+            $t = strtoupper(trim($v));
+            return $t === '' ? null : $t;
+        };
+
+        $updates = [
+            'tanggal_submit' => [$blockStart, $request->tanggal_submit],
+            'nilai' => [$blockStart + 1, $request->nilai],
+            'gr_ses' => [$blockStart + 2, $request->gr_ses],
+            'no_spp' => [$blockStart + 3, $request->no_spp],
+            'payment_status' => [$paymentStatusIdx, $normStatus($request->payment_status)],
+            'status_termin' => [$terminStatusIdx, $normStatus($request->status_termin)],
+        ];
+
+        // 1) Update cache ProjectLink.data (sumber GET /api/procurement-monitoring)
+        $link = ProjectLink::where('master_project_id', $projectId)
+            ->where('sheet_key', 'procurement')
+            ->first()
+            ?? ProjectLink::where('master_project_id', $projectId)
+                ->where('sheet_name', 'like', '%Procurement%')
+                ->first();
+
+        $rowIdx = null;
+        if ($link && is_array($link->data)) {
+            $rows = $link->data;
+            foreach ($rows as $i => $r) {
+                if (isset($r[0]) && trim((string) $r[0]) === $no) {
+                    $rowIdx = $i;
+                    break;
+                }
+            }
+            if ($rowIdx !== null) {
+                foreach ($updates as [$colIdx, $val]) {
+                    if ($val !== null) {
+                        $rows[$rowIdx][$colIdx] = $val;
+                    }
+                }
+                $link->data = $rows;
+                $link->save();
+            }
+        }
+
+        // 2) Write-back permanen ke sheet mentor
+        $sheetRow = $this->syncService->findProcurementRow($projectId, $no);
+        $written = [];
+        if ($sheetRow !== null) {
+            // Kolom baru BL..BR: pastikan grid sheet cukup sebelum menulis status termin
+            if (array_key_exists('status_termin', $updates) && $updates['status_termin'][1] !== null) {
+                $this->syncService->ensureProcurementColumnsPublic('6. Procurement', config('services.google.sheet_id') ?? env('GOOGLE_SHEET_ID', ''));
+            }
+            foreach ($updates as $name => [$colIdx, $val]) {
+                if ($val === null) {
+                    continue;
+                }
+                $letter = $this->columnLetter($colIdx);
+                $ok = $this->syncService->writeBackToSheet('6. Procurement', "{$letter}{$sheetRow}", (string) $val);
+                $written[$name] = $ok;
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Termin updated',
+            'sheet_written' => $written,
+            'sheet_row' => $sheetRow,
+        ]);
+    }
+
+    /** 0-based column index -> huruf kolom sheet (0=A, 25=Z, 26=AA, ...) */
+    private function columnLetter(int $index): string
+    {
+        $letters = '';
+        $i = $index;
+        while ($i >= 0) {
+            $letters = chr(65 + ($i % 26)) . $letters;
+            $i = intdiv($i, 26) - 1;
+        }
+        return $letters;
     }
 
     public function destroyProcurement(Request $request)

@@ -1,1 +1,10 @@
 @import "tailwindcss";
+@import "./tokens.css";
+
+/* Mentor: "tanpa border" — hanya halaman procurement (project monitoring tetap berborder) */
+.no-borders,
+.no-borders *,
+.no-borders *::before,
+.no-borders *::after {
+  border-color: transparent !important;
+}

@@ -151,7 +151,7 @@ export function parseProcurementData(rawData) {
         estimatedDelivery: parseText(row[54]), // BC
         deliveryStatus: parseText(row[55]), // BD
 
-        // Payment Status
+        // Payment Status (BE..BK) + Status Termin (BL..BR, kolom baru)
         paymentStatus: {
           dp: parseText(row[56]), // BE
           t1: parseText(row[57]), // BF
@@ -161,11 +161,35 @@ export function parseProcurementData(rawData) {
           t5: parseText(row[61]), // BJ
           t6: parseText(row[62])  // BK
         },
+        terminStatus: {
+          dp: parseText(row[63]), // BL
+          t1: parseText(row[64]), // BM
+          t2: parseText(row[65]), // BN
+          t3: parseText(row[66]), // BO
+          t4: parseText(row[67]), // BP
+          t5: parseText(row[68]), // BQ
+          t6: parseText(row[69])  // BR
+        },
 
         // Menyimpan raw row data
         rawRowData: row
       });
     }
+  });
+
+  // Fallback Status Termin (BL..BR): jika kosong, derive dari GR/SES DONE atau Payment Status PAID
+  const terminSlotBlocks = { dp: 'dp', t1: 'termin1', t2: 'termin2', t3: 'termin3', t4: 'termin4', t5: 'termin5', t6: 'termin6' };
+  items.forEach(item => {
+    Object.entries(terminSlotBlocks).forEach(([slot, blockKey]) => {
+      const current = String(item.terminStatus[slot] || '').trim();
+      if (current && current !== '-') return;
+      const blk = item[blockKey] || {};
+      const gr = String(blk.grSes || '').trim().toUpperCase();
+      const pay = String(item.paymentStatus[slot] || '').trim().toUpperCase();
+      if (gr === 'DONE' || pay === 'PAID') {
+        item.terminStatus[slot] = 'PAID';
+      }
+    });
   });
 
   // Hitung Agregasi Metrics & Charts

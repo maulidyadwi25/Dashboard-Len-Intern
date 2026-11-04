@@ -1,96 +1,96 @@
 <template>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-    <!-- Chart 1: Total by Status Pengadaan (Dinamis sesuai Currency) -->
-    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between print-chart-box">
+    <!-- Value by Status Chart -->
+    <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-xs flex flex-col justify-between print-chart-box">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-sm font-bold text-[#191c1e]">Total by Status Pengadaan</h3>
-        <span class="text-[10px] font-extrabold px-2 py-0.5 bg-blue-50 text-[#003da5] rounded-md border border-[#4d7fdd] uppercase">
+        <h3 class="text-sm font-bold text-on-surface">Total by Status Pengadaan</h3>
+        <span class="text-label-caps font-extrabold px-2 py-0.5 bg-blue-50 text-primary-600 rounded-md border border-primary-400 uppercase tracking-wider">
           {{ selectedCurrency || 'IDR' }}
         </span>
       </div>
       
       <div class="space-y-4 my-auto">
         <!-- In Progress -->
-        <div class="flex items-center justify-between text-xs">
-          <span class="w-24 text-[#434655] font-medium">In Progress</span>
+        <div class="flex items-center justify-between text-body-sm">
+          <span class="w-24 text-on-surface-variant font-medium">In Progress</span>
           <div class="flex-1 mx-4 bg-[#737686]/15 h-3 rounded-full overflow-hidden">
-            <div class="bg-[#004ac6] h-full rounded-full transition-all duration-500" :style="{ width: getStatusWidth(chartsData?.statusBreakdown?.inProgress) }"></div>
+            <div class="bg-primary-500 h-full rounded-full transition-all duration-500" :style="{ width: getStatusWidth(chartsData?.statusBreakdown?.inProgress) }"></div>
           </div>
-          <span class="min-w-[80px] text-right font-bold text-[#434655] whitespace-nowrap">{{ formatValue(chartsData?.statusBreakdown?.inProgress) }}</span>
+          <span class="min-w-[80px] text-right font-bold text-on-surface-variant whitespace-nowrap">{{ formatValue(chartsData?.statusBreakdown?.inProgress) }}</span>
         </div>
 
         <!-- Completed -->
-        <div class="flex items-center justify-between text-xs">
-          <span class="w-24 text-[#434655] font-medium">Completed</span>
+        <div class="flex items-center justify-between text-body-sm">
+          <span class="w-24 text-on-surface-variant font-medium">Completed</span>
           <div class="flex-1 mx-4 bg-[#737686]/15 h-3 rounded-full overflow-hidden">
-            <div class="bg-[#4d7fdd] h-full rounded-full transition-all duration-500" :style="{ width: getStatusWidth(chartsData?.statusBreakdown?.completed) }"></div>
+            <div class="bg-primary-400 h-full rounded-full transition-all duration-500" :style="{ width: getStatusWidth(chartsData?.statusBreakdown?.completed) }"></div>
           </div>
-          <span class="min-w-[80px] text-right font-bold text-[#434655] whitespace-nowrap">{{ formatValue(chartsData?.statusBreakdown?.completed) }}</span>
+          <span class="min-w-[80px] text-right font-bold text-on-surface-variant whitespace-nowrap">{{ formatValue(chartsData?.statusBreakdown?.completed) }}</span>
         </div>
 
         <!-- Overdue -->
-        <div class="flex items-center justify-between text-xs">
-          <span class="w-24 text-[#434655] font-medium">Overdue</span>
+        <div class="flex items-center justify-between text-body-sm">
+          <span class="w-24 text-on-surface-variant font-medium">Overdue</span>
           <div class="flex-1 mx-4 bg-[#737686]/15 h-3 rounded-full overflow-hidden">
-            <div class="bg-[#ba1a1a] h-full rounded-full transition-all duration-500" :style="{ width: getStatusWidth(chartsData?.statusBreakdown?.overdue) }"></div>
+            <div class="bg-error h-full rounded-full transition-all duration-500" :style="{ width: getStatusWidth(chartsData?.statusBreakdown?.overdue) }"></div>
           </div>
-          <span class="min-w-[80px] text-right font-bold text-[#434655] whitespace-nowrap">{{ formatValue(chartsData?.statusBreakdown?.overdue) }}</span>
+          <span class="min-w-[80px] text-right font-bold text-on-surface-variant whitespace-nowrap">{{ formatValue(chartsData?.statusBreakdown?.overdue) }}</span>
         </div>
       </div>
     </div>
 
-    <!-- Chart 2: Distribution by Jenis Pengadaan (Donut + Label Persentase Melayang) -->
-    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex flex-col justify-between print-chart-box">
-      <h3 class="text-sm font-bold text-[#191c1e] mb-4">Distribution by Jenis Pengadaan</h3>
+    <!-- Distribution by Category Chart -->
+    <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-xs flex flex-col justify-between print-chart-box">
+      <h3 class="text-sm font-bold text-on-surface mb-4">Distribution by Jenis Pengadaan</h3>
       
       <div class="flex items-center justify-around my-auto py-2">
-        <!-- Container Donut dengan Label Eksternal Melayang -->
+        <!-- Donut Chart with Floating Labels -->
         <div class="relative w-40 h-36 flex items-center justify-center">
           
-          <!-- Label Eksternal Barang (Kanan Atas) -->
-          <div class="absolute top-0 right-1 bg-white px-1.5 py-0.5 rounded shadow-xs border border-gray-200 text-[10px] font-bold text-[#434655] flex items-center space-x-1 z-10">
-            <span class="w-1.5 h-1.5 rounded-full bg-[#004ac6]"></span>
+          <!-- Goods Label -->
+          <div class="absolute top-0 right-1 bg-white px-1.5 py-0.5 rounded shadow-xs border border-outline-variant text-label-caps font-bold text-on-surface-variant flex items-center space-x-1 z-10 tracking-wider">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary-500"></span>
             <span>{{ persentaseBarang }}%</span>
           </div>
 
-          <!-- Label Eksternal Jasa (Kiri Atas) -->
-          <div class="absolute top-0 left-1 bg-white px-1.5 py-0.5 rounded shadow-xs border border-gray-200 text-[10px] font-bold text-[#434655] flex items-center space-x-1 z-10">
-            <span class="w-1.5 h-1.5 rounded-full bg-[#4d7fdd]"></span>
+          <!-- Services Label -->
+          <div class="absolute top-0 left-1 bg-white px-1.5 py-0.5 rounded shadow-xs border border-outline-variant text-label-caps font-bold text-on-surface-variant flex items-center space-x-1 z-10 tracking-wider">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary-400"></span>
             <span>{{ persentaseJasa }}%</span>
           </div>
 
-          <!-- Label Eksternal Barang & Jasa (Bawah Tengah) -->
-          <div class="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white px-1.5 py-0.5 rounded shadow-xs border border-gray-200 text-[10px] font-bold text-[#434655] flex items-center space-x-1 z-10 whitespace-nowrap">
-            <span class="w-1.5 h-1.5 rounded-full bg-[#64748B]"></span>
+          <!-- Goods & Services Label -->
+          <div class="absolute bottom-0 left-1/2 -translate-x-1/2 bg-white px-1.5 py-0.5 rounded shadow-xs border border-outline-variant text-label-caps font-bold text-on-surface-variant flex items-center space-x-1 z-10 whitespace-nowrap tracking-wider">
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
             <span>{{ persentaseBarangJasa }}%</span>
           </div>
 
           <!-- Donut Ring -->
           <div 
             class="relative w-28 h-28 rounded-full flex items-center justify-center print-exact mt-3 shadow-xs"
-            :style="{ background: `conic-gradient(#004ac6 0% ${persentaseBarang}%, #4d7fdd ${persentaseBarang}% ${batasJasa}%, #64748B ${batasJasa}% 100%)` }"
+            :style="{ background: `conic-gradient(#004ac6 0% ${persentaseBarang}%, #3385ff ${persentaseBarang}% ${batasJasa}%, #64748B ${batasJasa}% 100%)` }"
           >
-            <!-- Lingkaran Putih Tengah dengan Teks di Dalamnya -->
+            <!-- Center Circle with Total -->
             <div class="absolute inset-[15px] bg-white rounded-full print-exact flex flex-col items-center justify-center">
-              <span class="text-xs text-[#64748B] font-medium leading-none mb-0.5">Total</span>
-              <span class="text-base font-bold text-[#434655] leading-none">100%</span>
+              <span class="text-body-sm text-slate-500 font-medium leading-none mb-0.5">Total</span>
+              <span class="text-body-base font-bold text-on-surface-variant leading-none">100%</span>
             </div>
           </div>
         </div>
 
-        <!-- Legend Bersih (Tanpa Persentase di Sampingnya) -->
-        <div class="space-y-3 text-xs w-24">
+        <!-- Legend -->
+        <div class="space-y-3 text-body-sm w-24">
           <div class="flex items-center space-x-2">
-            <span class="w-3 h-3 rounded-full bg-[#004ac6] inline-block print-exact"></span>
-            <span class="font-medium text-[#434655]">Barang</span>
+            <span class="w-3 h-3 rounded-full bg-primary-500 inline-block print-exact"></span>
+            <span class="font-medium text-on-surface-variant">Barang</span>
           </div>
           <div class="flex items-center space-x-2">
-            <span class="w-3 h-3 rounded-full bg-[#4d7fdd] inline-block print-exact"></span>
-            <span class="font-medium text-[#434655]">Jasa</span>
+            <span class="w-3 h-3 rounded-full bg-primary-400 inline-block print-exact"></span>
+            <span class="font-medium text-on-surface-variant">Jasa</span>
           </div>
           <div class="flex items-center space-x-2">
-            <span class="w-3 h-3 rounded-full bg-[#64748B] inline-block print-exact"></span>
-            <span class="font-medium text-[#434655]">Barang & Jasa</span>
+            <span class="w-3 h-3 rounded-full bg-slate-500 inline-block print-exact"></span>
+            <span class="font-medium text-on-surface-variant">Barang & Jasa</span>
           </div>
         </div>
       </div>
@@ -222,7 +222,7 @@ export default {
     print-color-adjust: exact !important;
   }
 
-  .bg-\[\#004ac6\], .bg-\[\#4d7fdd\], .bg-\[\#ba1a1a\] {
+  .bg-\[\#004ac6\], .bg-\[\#3385ff\], .bg-\[\#ba1a1a\] {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }

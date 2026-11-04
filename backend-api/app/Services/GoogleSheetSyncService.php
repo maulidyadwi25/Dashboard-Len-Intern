@@ -75,6 +75,96 @@ class GoogleSheetSyncService
     }
 
     /**
+     * Pastikan header kolom "STATUS TERMIN" (BL..BR) ada di sheet procurement.
+     * Baris 5 = judul blok, baris 6 = sub-judul (DP, T1..T6) meniru pola PAYMENT STATUS.
+     * Grid sheet mungkin masih 63 kolom (maks BK) -> perluas dulu bila perlu.
+     */
+    protected function ensureProcurementTerminHeader(array $rows, string $sheetName, string $spreadsheetId): void
+    {
+        $headerRow = $rows[4] ?? [];
+        $current = trim((string) ($headerRow[63] ?? ''));
+        if ($current !== '') {
+            return; // sudah ada
+        }
+
+        $this->ensureSheetColumns($sheetName, $spreadsheetId, 70);
+
+        $subLabels = ['DP', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6'];
+        $colLetters = ['BL', 'BM', 'BN', 'BO', 'BP', 'BQ', 'BR'];
+
+        $this->writeBackToSheet($sheetName, 'BL5', 'STATUS TERMIN', $spreadsheetId);
+        foreach ($subLabels as $i => $label) {
+            $this->writeBackToSheet($sheetName, "{$colLetters[$i]}6", $label, $spreadsheetId);
+        }
+    }
+
+    /**
+     * Dipanggil dari endpoint termin sebelum write-back ke kolom baru (BL..BR).
+     */
+    public function ensureProcurementColumnsPublic(string $sheetName, string $spreadsheetId): bool
+    {
+        return $this->ensureSheetColumns($sheetName, $spreadsheetId, 70);
+    }
+
+    /**
+     * Perluas jumlah kolom grid sheet bila saat ini < $minColumns (appendDimension).
+     */
+    protected function ensureSheetColumns(string $sheetName, string $spreadsheetId, int $minColumns): bool
+    {
+        $token = $this->getAccessToken();
+        if (! $token) {
+            return false;
+        }
+
+        $metaUrl = "https://sheets.googleapis.com/v4/spreadsheets/{$spreadsheetId}?fields=sheets.properties";
+        $meta = Http::withToken($token)->get($metaUrl);
+        if (! $meta->successful()) {
+            Log::warning('Sheet metadata fetch failed: ' . $meta->body());
+            return false;
+        }
+
+        $target = null;
+        foreach ($meta->json('sheets') ?? [] as $sh) {
+            if (($sh['properties']['title'] ?? '') === $sheetName) {
+                $target = $sh['properties'];
+                break;
+            }
+        }
+        if (! $target) {
+            return false;
+        }
+
+        $gridCols = (int) ($target['gridProperties']['columnCount'] ?? 0);
+        $sheetId = $target['sheetId'];
+        $delta = $minColumns - $gridCols;
+        if ($delta <= 0) {
+            return true;
+        }
+
+        $res = Http::withToken($token)
+            ->withHeaders(['Content-Type' => 'application/json'])
+            ->post("https://sheets.googleapis.com/v4/spreadsheets/{$spreadsheetId}:batchUpdate", [
+                'requests' => [
+                    [
+                        'appendDimension' => [
+                            'sheetId' => $sheetId,
+                            'dimension' => 'COLUMNS',
+                            'length' => $delta,
+                        ],
+                    ],
+                ],
+            ]);
+
+        if (! $res->successful()) {
+            Log::error('Sheet appendDimension failed: ' . $res->body());
+            return false;
+        }
+
+        Log::info("Sheet '{$sheetName}' columns extended by {$delta} to {$minColumns}.");
+        return true;
+    }
+
+    /**
      * Write a value to a specific cell in Google Sheets.
      * e.g. writeBackToSheet('6. Procurement', 'F15', 'KONTRAK')
      */
@@ -248,7 +338,7 @@ class GoogleSheetSyncService
         }
 
         $sheetName = '6. Procurement';
-        $range = "'{$sheetName}'!A1:BK500";
+        $range = "'{$sheetName}'!A1:BR500";
         $apiUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' . $sheetIdToUse . '/values/' . urlencode($range);
 
         try {
@@ -310,6 +400,8 @@ class GoogleSheetSyncService
                     ['last_synced_at' => now()]
                 );
             }, 5);
+
+            $this->ensureProcurementTerminHeader($rows, $sheetName, $sheetIdToUse);
 
             return [
                 'success' => true,
@@ -511,7 +603,7 @@ class GoogleSheetSyncService
 
     protected function populateProcurements(array $rows, int $projectId): void
     {
-        // Simpan edit user sebelum delete (progress, priority, status)
+        // Simpan edit user sebelum delete (progress, priority, status + kontrak/payment/delivery)
         $userEdits = Procurement::where('master_project_id', $projectId)
             ->whereIn('progress', ['SPH', 'HPS', 'RKS', 'PR', 'RFQ', 'NEGOSIASI', 'PO', 'KONTRAK', 'PRODUCTION', 'DELIVERED'])
             ->orWhereIn('priority', ['High', 'Medium', 'Low'])
@@ -521,6 +613,9 @@ class GoogleSheetSyncService
                 'progress' => $p->progress,
                 'priority' => $p->priority,
                 'status' => $p->status,
+                'kontrak_status' => $p->kontrak_status,
+                'payment_priority' => $p->payment_priority,
+                'delivery_status' => $p->delivery_status,
             ])
             ->toArray();
 
@@ -577,7 +672,7 @@ class GoogleSheetSyncService
                 'no_pr' => trim((string) ($row[15] ?? '-')),
                 'proc_ops' => trim((string) ($row[16] ?? '-')),
                 'no_po' => trim((string) ($row[17] ?? '-')),
-                'kontrak_status' => trim((string) ($row[18] ?? '-')),
+                'kontrak_status' => $userEdit['kontrak_status'] ?? trim((string) ($row[18] ?? '-')),
                 'nilai_rab' => $parseNumber($row[19] ?? 0),
                 'realisasi' => $parseNumber($row[20] ?? 0),
                 'mata_uang' => trim((string) ($row[21] ?? 'IDR')),
@@ -585,6 +680,8 @@ class GoogleSheetSyncService
                 'status' => $userEdit['status'] ?? trim((string) ($row[4] ?? 'In Progress')),
                 'progress' => $userEdit['progress'] ?? trim((string) ($row[5] ?? '-')),
                 'priority' => $userEdit['priority'] ?? $sheetPriority,
+                'payment_priority' => $userEdit['payment_priority'] ?? trim((string) ($row[53] ?? '-')),
+                'delivery_status' => $userEdit['delivery_status'] ?? trim((string) ($row[55] ?? '-')),
                 'created_at' => now(),
                 'updated_at' => now(),
             ];

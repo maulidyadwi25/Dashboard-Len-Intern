@@ -1,21 +1,21 @@
 <template>
-  <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-    <!-- Kiri: Info Proyek -->
+  <div class="bg-white rounded-xl p-6 border border-outline-variant shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <!-- Project Information -->
     <div class="flex-1 min-w-0">
       <h2 class="text-2xl font-bold text-gray-900">
         {{ projectInfo.projectName }}
       </h2>
-      <p class="text-xs text-gray-500 mt-1.5 font-normal">
+      <p class="text-body-sm text-gray-500 mt-1.5 font-normal">
         Project Code: <span class="font-medium text-gray-700">{{ projectInfo.projectCode }}</span> 
         <span class="mx-2 text-gray-300">|</span> 
         Project Value: <span class="font-medium text-gray-700">{{ projectInfo.projectValue }}</span>
       </p>
 
-      <!-- Description (Editable) -->
+      <!-- Project Description -->
       <div class="mt-3">
         <div v-if="!isEditingDesc" 
           @click="startEditDesc" 
-          class="text-sm text-gray-400 bg-white border border-gray-300 rounded-full px-4 py-2 cursor-text hover:border-gray-400 transition-colors"
+          class="text-sm text-gray-400 bg-white border border-outline-variant rounded-full px-4 py-2 cursor-text hover:border-gray-400 transition-colors"
           :class="{ 'text-gray-700': description }"
         >
           {{ description || 'Tambah catatan' }}
@@ -26,7 +26,7 @@
             v-model="editDescValue"
             type="text"
             maxlength="1000"
-            class="flex-1 text-sm text-gray-700 border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            class="flex-1 text-sm text-gray-700 border border-outline-variant rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Tambah catatan"
             @blur="saveDesc"
             @keydown.enter="saveDesc"
@@ -34,35 +34,35 @@
           />
           <button 
             @click="saveDesc" 
-            class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-semibold transition-colors cursor-pointer"
+            class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-body-sm font-semibold transition-colors cursor-pointer"
           >
             Simpan
           </button>
         </div>
-        <p v-if="descStatus" class="text-[10px] mt-1" :class="descStatus === 'saved' ? 'text-emerald-600' : 'text-red-500'">
+        <p v-if="descStatus" class="text-label-caps mt-1 tracking-wider" :class="descStatus === 'saved' ? 'text-emerald-600' : 'text-red-500'">
           {{ descStatus === 'saved' ? 'Tersimpan' : descStatus }}
         </p>
       </div>
     </div> 
 
-    <!-- Kanan: Metrik Overall Progress & SPI -->
+    <!-- Progress & SPI Metrics -->
     <div class="flex items-center space-x-6 divide-x divide-gray-200">
       <div class="pr-2">
-        <span class="text-[11px] font-bold text-gray-400 tracking-wider uppercase block">
+        <span class="text-label-caps font-bold text-gray-400 tracking-wider uppercase block">
           OVERALL PROGRESS
         </span>
         <div class="flex items-baseline space-x-2 mt-1">
           <span class="text-2xl font-extrabold text-gray-900">
             {{ calculatedProgress }}
           </span>
-          <span v-if="projectInfo.progressTrend" class="text-xs font-semibold text-emerald-600 flex items-center">
+          <span v-if="projectInfo.progressTrend" class="text-body-sm font-semibold text-emerald-600 flex items-center">
             ↑ {{ projectInfo.progressTrend }}
           </span>
         </div>
       </div>
 
       <div class="pl-6">
-        <span class="text-[11px] font-bold text-gray-400 tracking-wider uppercase block">
+        <span class="text-label-caps font-bold text-gray-400 tracking-wider uppercase block">
           SPI
         </span>
         <div class="flex items-baseline space-x-2 mt-1">
@@ -71,7 +71,7 @@
           </span>
           <span 
             v-if="projectInfo.spiStatus" 
-            class="text-xs font-semibold"
+            class="text-body-sm font-semibold"
             :class="projectInfo.spiStatus === 'Delay' ? 'text-amber-600' : 'text-emerald-600'"
           >
             {{ projectInfo.spiStatus }}

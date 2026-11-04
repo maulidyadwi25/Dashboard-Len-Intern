@@ -37,6 +37,8 @@ class Procurement extends Model
         'status',
         'progress',
         'priority',
+        'payment_priority',
+        'delivery_status',
     ];
 
     protected $casts = [

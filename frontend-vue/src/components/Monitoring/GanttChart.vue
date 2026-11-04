@@ -1,15 +1,15 @@
 <template>
   <div class="w-full mt-4">
-    <!-- 1. FILTER BAR (DIPISAHKAN DARI TABEL UTAMA) -->
+    <!-- Filter Bar -->
     <div class="mb-4 flex flex-wrap justify-between items-center gap-4 bg-transparent no-print">
       <div class="flex flex-wrap items-center gap-3">
-        <!-- VIEW Dropdown -->
+        <!-- View Selector -->
         <div class="flex items-center space-x-2">
-          <span class="text-xs font-bold text-gray-600 uppercase tracking-wider">VIEW:</span>
+          <span class="text-body-sm font-bold text-gray-600 uppercase tracking-wider">VIEW:</span>
           <div class="relative">
             <select 
               v-model="selectedViewFilter"
-              class="bg-white border border-gray-300 rounded-md py-1.5 px-3 text-xs text-gray-700 font-medium focus:outline-none cursor-pointer pr-7 appearance-none shadow-xs"
+              class="bg-white border border-outline-variant rounded-md py-1.5 px-3 text-body-sm text-gray-700 font-medium focus:outline-none cursor-pointer pr-7 appearance-none shadow-xs"
             >
               <option value="all">All</option>
               <option value="overdue">Overdue</option>
@@ -24,33 +24,33 @@
         <span class="text-gray-300">|</span>
 
         <!-- Date Range Filter -->
-        <div class="flex items-center space-x-2 bg-white border border-gray-300 rounded-md py-1.5 px-3 text-xs text-gray-700 shadow-xs">
+        <div class="flex items-center space-x-2 bg-white border border-outline-variant rounded-md py-1.5 px-3 text-body-sm text-gray-700 shadow-xs">
           <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
           </svg>
           <input 
             type="date" 
             v-model="startDate" 
-            class="text-xs text-gray-700 bg-transparent focus:outline-none cursor-pointer"
+            class="text-body-sm text-gray-700 bg-transparent focus:outline-none cursor-pointer"
           />
         </div>
 
-        <span class="text-gray-400 font-bold text-xs">-</span>
+        <span class="text-gray-400 font-bold text-body-sm">-</span>
 
-        <div class="flex items-center space-x-2 bg-white border border-gray-300 rounded-md py-1.5 px-3 text-xs text-gray-700 shadow-xs">
+        <div class="flex items-center space-x-2 bg-white border border-outline-variant rounded-md py-1.5 px-3 text-body-sm text-gray-700 shadow-xs">
           <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
           </svg>
           <input 
             type="date" 
             v-model="endDate" 
-            class="text-xs text-gray-700 bg-transparent focus:outline-none cursor-pointer"
+            class="text-body-sm text-gray-700 bg-transparent focus:outline-none cursor-pointer"
           />
         </div>
 
         <button 
           @click="resetFilter"
-          class="px-3.5 py-1.5 bg-white hover:bg-gray-50 text-blue-600 rounded-md text-xs font-semibold transition-colors border border-gray-300 shadow-xs"
+          class="px-3.5 py-1.5 bg-white hover:bg-gray-50 text-blue-600 rounded-md text-body-sm font-semibold transition-colors border border-outline-variant shadow-xs"
         >
           Reset
         </button>
@@ -59,7 +59,7 @@
       <div>
         <button 
           @click="exportToPDF"
-          class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold transition-colors shadow-xs flex items-center space-x-1.5"
+          class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-body-sm font-semibold transition-colors shadow-xs flex items-center space-x-1.5"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
@@ -69,46 +69,46 @@
       </div>
     </div>
 
-    <!-- CARD TABEL GANTT UTAMA -->
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <!-- Main Gantt Table -->
+    <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
       <div class="overflow-x-auto max-w-full gantt-print-container">
         <table class="text-left border-collapse table-fixed w-full gantt-table" :style="{ width: tableCalculatedWidth }">
           <thead>
-            <tr class="bg-[#f8fafc] text-gray-500 text-xs font-bold uppercase border-b border-gray-200">
+            <tr class="bg-[#f8fafc] text-gray-500 text-body-sm font-bold uppercase border-b border-outline-variant">
               
-              <!-- MERGE HEADER WBS / ACTIVITY (ROWSPAN 2) -->
+              <!-- WBS & Activity Header -->
               <th 
                 rowspan="2" 
-                class="p-3 w-[320px] min-w-[320px] sticky left-0 bg-[#f8fafc] z-30 border-r border-gray-200 text-[11px] font-bold text-gray-500 tracking-wider align-middle wbs-col"
+                class="p-3 w-[320px] min-w-[320px] sticky left-0 bg-[#f8fafc] z-30 border-r border-outline-variant text-label-caps font-bold text-gray-500 tracking-wider align-middle wbs-col"
               >
                 WBS / ACTIVITY
               </th>
 
-              <!-- Header Bulan -->
+              <!-- Month Header -->
               <template v-if="filteredMonths.length > 0">
                 <th 
                   v-for="month in filteredMonths" 
                   :key="month.name" 
                   :colspan="month.weeks.length"
-                  class="text-center py-2 px-3 border-r border-gray-200 tracking-wider text-[11px] font-bold text-gray-600 bg-[#f8fafc]"
+                  class="text-center py-2 px-3 border-r border-outline-variant tracking-wider text-label-caps font-bold text-gray-600 bg-[#f8fafc]"
                 >
                   {{ formatMonthShort(month.name) }}
                 </th>
               </template>
-              <th v-else class="text-center py-2 px-3 border-r border-gray-200 text-[11px] w-full bg-[#f8fafc]">
+              <th v-else class="text-center py-2 px-3 border-r border-outline-variant text-label-caps w-full bg-[#f8fafc] tracking-wider">
                 PERIODE
               </th>
             </tr>
 
-            <!-- Header Minggu -->
-            <tr class="bg-[#f8fafc] text-gray-400 text-[10px] font-semibold border-b border-gray-200">
+            <!-- Week Header -->
+            <tr class="bg-[#f8fafc] text-gray-400 text-label-caps font-semibold border-b border-outline-variant tracking-wider">
               <template v-if="filteredMonths.length > 0">
                 <template v-for="month in filteredMonths" :key="'weeks-' + month.name">
                   <th 
                     v-for="week in month.weeks" 
                     :key="week" 
-                    class="text-center py-1.5 w-14 min-w-[56px] bg-[#f8fafc] text-[10px] text-gray-400 font-medium week-col"
-                    :class="isLastWeekOfMonth(`${month.name}_${week}`) ? 'border-r-2 border-gray-300' : 'border-r border-gray-100'"
+                    class="text-center py-1.5 w-14 min-w-[56px] bg-[#f8fafc] text-label-caps text-gray-400 font-medium week-col tracking-wider"
+                    :class="isLastWeekOfMonth(`${month.name}_${week}`) ? 'border-r-2 border-outline-variant' : 'border-r border-gray-100'"
                   >
                     {{ week }}
                   </th>
@@ -125,8 +125,8 @@
                   <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                   </svg>
-                  <span class="text-base font-semibold text-gray-600">Data Tidak Ditemukan</span>
-                  <span class="text-xs text-gray-400">Data proyek hanya tersedia untuk periode tahun 2026.</span>
+                  <span class="text-body-base font-semibold text-gray-600">Data Tidak Ditemukan</span>
+                  <span class="text-body-sm text-gray-400">Data proyek hanya tersedia untuk periode tahun 2026.</span>
                 </div>
               </td>
             </tr>
@@ -137,9 +137,9 @@
               :key="index"
               class="hover:bg-slate-50/60 transition-colors group relative"
             >
-              <!-- PENYESUAIAN FONT & PADDING -->
+              <!-- Table Font & Padding -->
               <td 
-                class="p-3 w-[320px] min-w-[320px] sticky left-0 z-30 border-r border-gray-200 bg-white group-hover:bg-[#f8fafc] wbs-col align-middle"
+                class="p-3 w-[320px] min-w-[320px] sticky left-0 z-30 border-r border-outline-variant bg-white group-hover:bg-[#f8fafc] wbs-col align-middle"
                 :class="getWbsPaddingClass(item)"
               >
                 <div class="flex items-center space-x-2">
@@ -150,16 +150,16 @@
                 </div>
               </td>
 
-              <!-- SEL MINGGU GANTT CHART -->
+              <!-- Weekly Timeline Cells -->
               <td 
                 v-for="weekKey in flatWeeks" 
                 :key="weekKey"
                 class="p-0 h-12 relative align-middle week-col overflow-visible"
-                :class="isLastWeekOfMonth(weekKey) ? 'border-r-2 border-gray-300' : 'border-r border-gray-100/60'"
+                :class="isLastWeekOfMonth(weekKey) ? 'border-r-2 border-outline-variant' : 'border-r border-gray-100/60'"
               >
                 <div class="w-full h-full flex items-center justify-center relative">
                   
-                  <!-- CONTAINER BAR GANTT -->
+                  <!-- Progress Bar Container -->
                   <div 
                     v-if="getBarStructure(item, weekKey).isStart"
                     class="absolute h-7 rounded-md z-10 overflow-hidden flex items-center bg-[#c6d2fe]"
@@ -168,7 +168,7 @@
                       width: `calc(${getBarStructure(item, weekKey).totalSpan * 100}%)`
                     }"
                   >
-                    <!-- BASE LAYER: ACTUAL PROGRESS BAR (HIJAU SAMAR) -->
+                    <!-- Actual Progress Layer -->
                     <div 
                       v-if="getBarStructure(item, weekKey).actualSpan > 0"
                       class="absolute inset-y-0 left-0 bg-[#a7f3d0] transition-all"
@@ -177,28 +177,28 @@
                       }"
                     ></div>
 
-                    <!-- OVERLAY LAYER: OVERDUE -->
+                    <!-- Overdue Highlight -->
                     <div 
                       v-if="getBarStructure(item, weekKey).hasOverdue"
                       class="absolute inset-y-0 transition-all z-10"
                       :style="getBarStructure(item, weekKey).overdueStyle"
                     ></div>
 
-                    <!-- TOP LAYER: DOT PLAN & ACTUAL -->
+                        <!-- Plan & Actual Markers -->
                     <div class="w-full h-full flex items-center justify-between relative z-20">
                       <div 
                         v-for="wKey in getBarStructure(item, weekKey).includedWeeks" 
                         :key="wKey"
                         class="flex-1 h-full flex items-center justify-center gap-1 px-0.5"
                       >
-                        <!-- Plan Dot (Kuning) -->
+                        <!-- Planned Date Marker -->
                         <div 
                           v-if="item.planWeeks && item.planWeeks[wKey]" 
                           class="w-3.5 h-3.5 rounded-full bg-[#f59e0b] shrink-0 border border-white/60 shadow-xs"
                           :title="'Plan: ' + item.planWeeks[wKey]"
                         ></div>
 
-                        <!-- Actual Dot (Tetap Hijau Pekat / #10b981) -->
+                        <!-- Actual Date Marker -->
                         <div 
                           v-if="item.actualWeeks && item.actualWeeks[wKey]" 
                           class="w-3.5 h-3.5 rounded-full bg-[#10b981] shrink-0 border border-white/60 shadow-xs"
@@ -217,19 +217,19 @@
       </div>
 
       <!-- Footer Legend -->
-      <div class="p-3.5 px-4 border-t border-gray-200 bg-white flex items-center justify-start">
-        <div class="flex flex-wrap items-center gap-6 text-xs font-medium text-gray-600">
+      <div class="p-3.5 px-4 border-t border-outline-variant bg-white flex items-center justify-start">
+        <div class="flex flex-wrap items-center gap-6 text-body-sm font-medium text-gray-600">
           <div class="flex items-center space-x-2">
             <span class="w-3.5 h-3.5 rounded-full bg-[#f59e0b] inline-block"></span>
-            <span class="text-xs text-gray-700">Plan</span>
+            <span class="text-body-sm text-gray-700">Plan</span>
           </div>
           <div class="flex items-center space-x-2">
             <span class="w-3.5 h-3.5 rounded-full bg-[#10b981] inline-block"></span>
-            <span class="text-xs text-gray-700">Actual</span>
+            <span class="text-body-sm text-gray-700">Actual</span>
           </div>
           <div class="flex items-center space-x-2">
             <span class="w-5 h-3 rounded-sm bg-[#ef4444] border border-red-300 inline-block"></span>
-            <span class="text-xs text-gray-700">Overdue</span>
+            <span class="text-body-sm text-gray-700">Overdue</span>
           </div>
         </div>
       </div>
@@ -249,7 +249,7 @@ export default {
   data() {
     return {
       selectedViewFilter: 'all',
-      startDate: '2026-06-01',
+      startDate: '2026-01-01',
       endDate: '2026-12-31'
     };
   },
@@ -414,10 +414,10 @@ export default {
     },
 
     getWbsTextClass(item) {
-      if (!item) return 'font-normal text-xs text-gray-700';
-      if (item.level === 1 || (!item.no && item.isHeader)) return 'font-extrabold text-base text-gray-900 tracking-tight';
-      if (item.level === 2) return 'font-medium text-xs text-gray-800';
-      return 'font-normal text-xs text-gray-700';
+      if (!item) return 'font-normal text-body-sm text-gray-700';
+      if (item.level === 1 || (!item.no && item.isHeader)) return 'font-extrabold text-body-base text-gray-900 tracking-tight';
+      if (item.level === 2) return 'font-medium text-body-sm text-gray-800';
+      return 'font-normal text-body-sm text-gray-700';
     },
 
     isLastWeekOfMonth(weekKey) {

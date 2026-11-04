@@ -1,21 +1,21 @@
 <template>
-  <div class="min-h-screen bg-[#f7f9fb] text-[#191c1e] font-sans pb-12">
-    <!-- TOP NAVBAR (Ditambahkan class hide-on-print) -->
-    <header class="bg-white border-b border-gray-200 sticky top-0 z-50 hide-on-print">
-      <div class="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
+  <div class="min-h-screen bg-background text-on-surface font-sans pb-12 no-borders">
+    <!-- Top Navigation -->
+    <header class="bg-white border-b border-outline-variant sticky top-0 z-50 hide-on-print">
+      <div class="max-w-[1280px] mx-auto px-4 md:px-10 h-16 flex items-center justify-between">
         <!-- Brand Logo & Top Nav Tabs -->
         <div class="flex items-center space-x-6">
           <div class="flex items-center space-x-2">
-            <span class="text-2xl font-bold text-[#004ac6] tracking-tight">Executive Command</span>
+            <span class="text-2xl font-bold text-primary-500 tracking-tight">Executive Command</span>
           </div>
 
           <!-- Project Dropdown Selector -->
-          <div v-if="projects.length > 0" class="flex items-center space-x-2 bg-[#f7f9fb] px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs">
-            <span class="text-xs font-bold text-[#64748B] uppercase tracking-wider">Project:</span>
+          <div v-if="projects.length > 0" class="flex items-center space-x-2 bg-background px-3 py-1.5 rounded-lg border border-outline-variant shadow-xs">
+            <span class="text-body-sm font-bold text-slate-500 uppercase tracking-wider">Project:</span>
             <select 
               v-model="selectedProjectId" 
               @change="onProjectChange"
-              class="bg-transparent text-xs font-bold text-[#191c1e] focus:outline-none cursor-pointer"
+              class="bg-transparent text-body-sm font-bold text-on-surface focus:outline-none cursor-pointer"
             >
               <option value="all">All Projects</option>
               <option v-for="p in projects" :key="p.id" :value="p.id">
@@ -25,10 +25,10 @@
           </div>
 
           <nav class="flex items-center space-x-4 text-sm font-medium">
-            <router-link :to="projectMonitoringLink" class="text-[#64748B] hover:text-[#434655] pb-1">
+            <router-link :to="projectMonitoringLink" class="text-slate-500 hover:text-on-surface-variant pb-1">
               Project Monitoring
             </router-link>
-            <router-link :to="procurementMonitoringLink" class="text-[#004ac6] font-semibold border-b-2 border-[#004ac6] pb-1">
+            <router-link :to="procurementMonitoringLink" class="text-primary-500 font-semibold border-b-2 border-primary-500 pb-1">
               Procurement Monitoring
             </router-link>
           </nav>
@@ -40,7 +40,7 @@
           <button 
             @click="triggerSync" 
             :disabled="isSyncing"
-            class="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50 text-[#003da5] hover:bg-[#4d7fdd]/20 rounded-lg text-xs font-semibold border border-[#4d7fdd] transition-colors cursor-pointer disabled:opacity-50"
+            class="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50 text-primary-600 hover:bg-primary-400/20 rounded-lg text-body-sm font-semibold border border-primary-400 transition-colors cursor-pointer disabled:opacity-50"
             title="Sinkronisasi data dari Google Sheets ke Database SQLite"
           >
             <svg :class="{ 'animate-spin': isSyncing }" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,43 +49,43 @@
             <span>{{ isSyncing ? 'Syncing...' : 'Sync Sheet' }}</span>
           </button>
 
-          <button class="text-[#64748B] hover:text-[#434655] transition-colors p-1.5 rounded-full hover:bg-[#737686]/15">
+          <button class="text-slate-500 hover:text-on-surface-variant transition-colors p-1.5 rounded-full hover:bg-[#737686]/15">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
           </button>
-          <button class="text-[#64748B] hover:text-[#434655] transition-colors p-1.5 rounded-full hover:bg-[#737686]/15">
+          <button class="text-slate-500 hover:text-on-surface-variant transition-colors p-1.5 rounded-full hover:bg-[#737686]/15">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
           </button>
-          <div class="w-8 h-8 rounded-full bg-slate-200 border border-gray-300 overflow-hidden">
+          <div class="w-8 h-8 rounded-full bg-slate-200 border border-outline-variant overflow-hidden">
             <img src="https://ui-avatars.com/api/?name=User&background=1d4ed8&color=fff" alt="Profile" />
           </div>
         </div>
       </div>
     </header>
 
-    <!-- MAIN BODY CONTENT -->
-    <main class="max-w-[1400px] mx-auto px-6 pt-6 space-y-5">
+    <!-- Main Content -->
+    <main class="max-w-[1280px] mx-auto px-4 md:px-10 pt-6 space-y-5">
       <!-- Breadcrumb & Title Section -->
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 hide-on-print">
         <div>
-          <div class="flex items-center space-x-1.5 text-[11px] text-[#64748B] font-medium mb-1">
+          <div class="flex items-center space-x-1.5 text-label-caps text-slate-500 font-medium mb-1 tracking-wider">
             <router-link :to="projectMonitoringLink" class="hover:underline">Project Monitoring</router-link>
             <span>&rsaquo;</span>
-            <span class="text-[#434655] font-semibold">Procurement Monitoring</span>
+            <span class="text-on-surface-variant font-semibold">Procurement Monitoring</span>
           </div>
-          <h1 class="text-2xl font-bold text-[#191c1e] tracking-tight">Procurement Monitoring</h1>
-          <p class="text-xs text-[#64748B] mt-0.5">
+          <h1 class="text-2xl font-bold text-on-surface tracking-tight">Procurement Monitoring</h1>
+          <p class="text-body-sm text-slate-500 mt-0.5">
             Monitoring and analysis of enterprise procurement activities, vendor performance, and efficiency metrics.
           </p>
         </div>
 
-        <!-- Global Select Filters & Live Kurs -->
+        <!-- Currency Filter -->
         <div class="flex flex-wrap items-center gap-3 self-end md:self-auto">
-          <!-- Currency Conversion Switcher -->
+          <!-- Currency Selector -->
           <div class="flex items-center space-x-1.5">
-            <label class="text-xs text-[#434655] font-bold">Currency View:</label>
+            <label class="text-body-sm text-on-surface-variant font-bold">Currency View:</label>
             <select 
               v-model="selectedCurrency" 
-              class="bg-blue-50 border border-[#4d7fdd] text-[#004ac6] font-bold rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#4d7fdd] shadow-xs cursor-pointer"
+              class="bg-blue-50 border border-primary-400 text-primary-500 font-bold rounded-lg px-3 py-1.5 text-body-sm focus:outline-none focus:ring-2 focus:ring-primary-400 shadow-xs cursor-pointer"
             >
               <option value="IDR">IDR - Rupiah (Rp)</option>
               <option value="EUR">EUR - Euro (€)</option>
@@ -97,7 +97,7 @@
       </div>
 
       <!-- Error Message -->
-      <div v-if="errorMessage" class="bg-[#ba1a1a]/10 text-[#ba1a1a] p-4 rounded-xl border border-[#ba1a1a]/25 mb-6 text-sm">
+      <div v-if="errorMessage" class="bg-error-container text-error p-4 rounded-xl border border-error/25 mb-6 text-sm">
         {{ errorMessage }}
       </div>
 
@@ -108,11 +108,11 @@
       </div>
 
       <template v-else>
-        <!-- Project Profile disembunyikan sementara
+        <!-- Project Profile (currently hidden)
         <ProjectProfileCard v-if="showProfile" :profile="projectProfile" />
         -->
 
-        <!-- KPI & CHARTS (Nilai Otomatis Terkonversi) -->
+        <!-- Key Metrics & Charts -->
         <ProcurementMetrics1 
           :metrics="convertedProcurementData.metrics" 
           :selectedCurrency="selectedCurrency" 
@@ -135,8 +135,8 @@
       </template>
     </main>
 
-    <!-- FOOTER MINIMALIS -->
-    <footer class="max-w-[1400px] mx-auto px-6 mt-16 flex flex-col md:flex-row justify-between items-center text-[11px] text-[#64748B] gap-2 hide-on-print">
+    <!-- Footer -->
+    <footer class="max-w-[1280px] mx-auto px-4 md:px-10 mt-16 flex flex-col md:flex-row justify-between items-center text-label-caps text-slate-500 gap-2 hide-on-print tracking-wider">
       <span>© 2026 Corporate Performance Systems. All rights reserved.</span>
       <div class="flex items-center space-x-4">
         <a href="#" class="hover:underline">Privacy Policy</a>
