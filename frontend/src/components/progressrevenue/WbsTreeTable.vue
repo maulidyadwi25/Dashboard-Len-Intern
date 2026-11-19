@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, onBeforeUnmount, ref, TransitionGroup } from "vue";
 import { ChevronDown, ChevronRight, X, Pencil, Check } from "lucide-vue-next";
 import WbsGanttChart from "./WbsGanttChart.vue";
+import { useAuth } from "../../composables/useAuth";
 import type {
   VisibleWbsItem,
   WbsPeriod,
@@ -18,10 +19,22 @@ const props = defineProps<{
   savingWbsNo: string | null;
   progressErrors: Record<string, string>;
   saveProgressBatch: (
-    changes: Array<{ wbsNo: string; percent: number }>,
+    changes: Array<{ wbsNo: string; percent: number; comment?: string }>,
   ) => Promise<Record<string, boolean>>;
+  requestProgressDecrease: (
+    wbsNo: string,
+    percent: number,
+    comment: string,
+  ) => Promise<boolean>;
 }>();
 
+const { user } = useAuth();
+const pendingProgressItem = computed(
+  () =>
+    props.items.find(
+      ({ item }) => item.wbs_no === pendingWbsNo.value,
+    )?.item,
+);
 const emit = defineEmits<{
   toggle: [wbsNo: string];
   clearProgressError: [wbsNo: string];
@@ -33,6 +46,13 @@ const validationErrors = ref<Record<string, string>>({});
 const editingWbsNo = ref<string | null>(null);
 const showDiscardConfirmation = ref(false);
 const pendingWbsNo = ref<string | null>(null);
+const showProgressReductionDialog = ref(false);
+const progressComment = ref("");
+const commentError = ref("");
+const activityColumnWidth = ref(330);
+const resizeStartX = ref(0);
+const resizeStartWidth = ref(330);
+let isResizingActivityColumn = false;
 
 const months = [
   "Jan",
@@ -84,7 +104,10 @@ function isLeaf(item: WbsTreeItem): boolean {
 }
 
 function isEditableLeaf(item: WbsTreeItem): boolean {
-  return isLeaf(item);
+  return (
+    isLeaf(item) &&
+    (user.value?.role === "PA" || user.value?.role === "VP")
+  );
 }
 
 function activateEdit(item: WbsTreeItem): void {
@@ -155,7 +178,10 @@ function isValidDraft(item: WbsTreeItem): boolean {
   const value = Number(rawValue);
 
   return (
-    rawValue !== "" && Number.isFinite(value) && value >= 0 && value <= 100
+    rawValue !== "" &&
+    Number.isFinite(value) &&
+    value >= 0 &&
+    value <= 100
   );
 }
 
@@ -193,6 +219,47 @@ function planRange(item: WbsTreeItem): string {
     : item.plan_start_period || item.plan_end_period || "-";
 }
 
+function toggleParentOnSingleClick(item: WbsTreeItem, event: MouseEvent): void {
+  if (item.children.length === 0 || event.detail > 1) return;
+  emit("toggle", item.wbs_no);
+}
+
+function beginActivityColumnResize(event: PointerEvent): void {
+  event.preventDefault();
+  event.stopPropagation();
+  isResizingActivityColumn = true;
+  resizeStartX.value = event.clientX;
+  resizeStartWidth.value = activityColumnWidth.value;
+  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+}
+
+function resizeActivityColumn(event: PointerEvent): void {
+  if (!isResizingActivityColumn) return;
+  activityColumnWidth.value = Math.min(
+    600,
+    Math.max(220, resizeStartWidth.value + event.clientX - resizeStartX.value),
+  );
+}
+
+function endActivityColumnResize(): void {
+  isResizingActivityColumn = false;
+}
+
+function resizeActivityColumnByKeyboard(event: KeyboardEvent): void {
+  const step = event.shiftKey ? 40 : 12;
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    activityColumnWidth.value = Math.max(220, activityColumnWidth.value - step);
+  } else if (event.key === "ArrowRight") {
+    event.preventDefault();
+    activityColumnWidth.value = Math.min(600, activityColumnWidth.value + step);
+  }
+}
+
+onBeforeUnmount(() => {
+  isResizingActivityColumn = false;
+});
+
 function formatPercent(value: number | null | undefined): string {
   return value === null || value === undefined
     ? "-"
@@ -223,9 +290,117 @@ async function saveRow(item: WbsTreeItem): Promise<void> {
 
   delete validationErrors.value[item.wbs_no];
 
+  const isDecrease =
+    item.latest_progress_percent !== null &&
+    value < item.latest_progress_percent;
+  if (user.value?.role === "PA" && isDecrease) {
+    pendingWbsNo.value = item.wbs_no;
+    progressComment.value = "";
+    commentError.value = "";
+    showProgressReductionDialog.value = true;
+    return;
+  }
+
+  if (
+    user.value?.role === "PA" &&
+    value <= (item.latest_progress_percent ?? 0)
+  ) {
+    validationErrors.value[item.wbs_no] =
+      "Progres baru harus lebih besar dari progres terbaru.";
+    return;
+  }
+
+  if (
+    user.value?.role === "VP" &&
+    isDecrease
+  ) {
+    pendingWbsNo.value = item.wbs_no;
+    progressComment.value = "";
+    commentError.value = "";
+    showProgressReductionDialog.value = true;
+    return;
+  }
+
+  await persistProgress(item, value);
+}
+
+async function confirmProgressReduction(): Promise<void> {
+  const item = props.items.find(
+    ({ item: visibleItem }) => visibleItem.wbs_no === pendingWbsNo.value,
+  )?.item;
+  if (!item) {
+    showProgressReductionDialog.value = false;
+    pendingWbsNo.value = null;
+    return;
+  }
+
+  const rawValue = getDraft(item).trim();
+  const value = Number(rawValue);
+  if (
+    !isValidDraft(item) ||
+    !hasChanged(item) ||
+    item.latest_progress_percent === null ||
+    value >= item.latest_progress_percent
+  ) {
+    showProgressReductionDialog.value = false;
+    pendingWbsNo.value = null;
+    await saveRow(item);
+    return;
+  }
+
+  const comment = progressComment.value.trim();
+
+  if (user.value?.role === "PA") {
+    if (!comment) {
+      commentError.value = "Alasan pengajuan wajib diisi.";
+      return;
+    }
+
+    try {
+      const submitted = await props.requestProgressDecrease(
+        item.wbs_no,
+        value,
+        comment,
+      );
+      if (!submitted) return;
+
+      showProgressReductionDialog.value = false;
+      progressComment.value = "";
+      commentError.value = "";
+      pendingWbsNo.value = null;
+      delete drafts.value[item.wbs_no];
+      delete validationErrors.value[item.wbs_no];
+      editingWbsNo.value = null;
+      emit("dirtyChange", hasUnsavedChanges());
+    } catch (error) {
+      validationErrors.value[item.wbs_no] =
+        error instanceof Error ? error.message : "Gagal mengirim pengajuan.";
+    }
+    return;
+  }
+
+  showProgressReductionDialog.value = false;
+  pendingWbsNo.value = null;
+  await persistProgress(item, value, comment || undefined);
+}
+
+function cancelProgressReduction(): void {
+  const item = pendingProgressItem.value;
+  showProgressReductionDialog.value = false;
+  progressComment.value = "";
+  commentError.value = "";
+  pendingWbsNo.value = null;
+  if (item) cancelRowEdit(item);
+}
+
+async function persistProgress(
+  item: WbsTreeItem,
+  value: number,
+  comment?: string,
+): Promise<void> {
   try {
     const results = await props.saveProgressBatch([
-      { wbsNo: item.wbs_no, percent: value },
+      { wbsNo: item.wbs_no, percent: value, comment },
     ]);
 
     if (!results[item.wbs_no]) return;
@@ -245,14 +420,14 @@ async function saveRow(item: WbsTreeItem): Promise<void> {
   <div class="space-y-3">
     <!-- Table Container -->
     <div
-      class="overflow-auto rounded-2xl border border-outline-variant/60 bg-white shadow-sm transition-colors"
+      class="wbs-table-scroll max-h-[70vh] overflow-auto rounded-2xl border border-outline-variant/50 bg-white shadow-sm transition-colors"
     >
       <table
         class="wbs-tree-table table-fixed border-separate border-spacing-0 w-full text-left text-sm"
       >
         <colgroup>
           <col class="w-[50px]" />
-          <col class="w-[330px]" />
+          <col :style="{ width: `${activityColumnWidth}px` }" />
           <col class="w-[80px]" />
           <col class="w-[80px]" />
           <col class="w-[80px]" />
@@ -269,9 +444,25 @@ async function saveRow(item: WbsTreeItem): Promise<void> {
               WBS
             </th>
             <th
-              class="sticky left-[50px] top-0 z-40 w-[330px] bg-primary px-3 py-3.5 font-semibold whitespace-nowrap text-white border-b border-primary/80"
+              class="sticky left-[50px] top-0 z-40 relative bg-primary px-3 py-3.5 pr-5 font-semibold whitespace-nowrap text-white border-b border-primary/80"
+              :style="{ width: `${activityColumnWidth}px` }"
             >
               Aktivitas
+              <span
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Ubah lebar kolom aktivitas"
+                :aria-valuenow="activityColumnWidth"
+                aria-valuemin="220"
+                aria-valuemax="600"
+                tabindex="0"
+                class="absolute right-0 top-0 z-50 h-full w-2 touch-none cursor-col-resize hover:bg-white/20 focus-visible:bg-white/30 focus-visible:outline-none"
+                @pointerdown="beginActivityColumnResize"
+                @pointermove="resizeActivityColumn"
+                @pointerup="endActivityColumnResize"
+                @pointercancel="endActivityColumnResize"
+                @keydown="resizeActivityColumnByKeyboard"
+              />
             </th>
             <th
               class="sticky top-0 z-20 w-[80px] border-b border-primary/80 bg-primary px-2 py-3.5 font-semibold whitespace-nowrap"
@@ -311,36 +502,75 @@ async function saveRow(item: WbsTreeItem): Promise<void> {
             <WbsGanttChart mode="header" :periods="periods" />
           </tr>
         </thead>
-        <tbody>
-          <tr v-for="entry in items" :key="entry.item.wbs_no" class="group">
+        <TransitionGroup name="wbs-rows" tag="tbody">
+          <tr
+            v-for="entry in items"
+            :key="entry.item.wbs_no"
+            :class="entry.item.children.length > 0 ? 'group' : 'leaf-row'"
+          >
             <td
-              class="sticky left-0 z-10 h-16 w-[50px] bg-white px-2 font-medium text-on-surface-variant border-b border-r border-outline-variant/60 group-hover:bg-slate-50 transition-colors text-center"
+              class="sticky left-0 z-10 h-14 w-[50px] bg-white p-0 font-medium text-on-surface-variant border-b border-r border-outline-variant/60 transition-colors text-center"
+              :class="
+                entry.item.children.length > 0 ? 'group-hover:bg-slate-50' : ''
+              "
             >
-              {{ entry.item.wbs_no }}
+              <button
+                v-if="entry.item.children.length > 0"
+                type="button"
+                class="flex h-full min-h-11 w-full cursor-pointer items-center justify-center px-1 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                :aria-label="`Toggle ${entry.item.wbs_no}`"
+                :aria-expanded="Boolean(expanded[entry.item.wbs_no])"
+                @click="toggleParentOnSingleClick(entry.item, $event)"
+              >
+                {{ entry.item.wbs_no }}
+              </button>
+              <span
+                v-else
+                class="inline-flex h-full w-full items-center justify-center px-2"
+              >
+                {{ entry.item.wbs_no }}
+              </span>
             </td>
 
             <td
-              class="sticky left-[50px] z-10 h-16 w-[330px] bg-white px-3 text-on-surface border-b border-outline-variant/60 group-hover:bg-slate-50 transition-colors"
+              class="sticky left-[50px] z-10 h-14 bg-white p-0 text-on-surface border-b border-outline-variant/60 transition-colors"
+              :class="
+                entry.item.children.length > 0 ? 'group-hover:bg-slate-50' : ''
+              "
+              :style="{ width: `${activityColumnWidth}px` }"
             >
-              <div
-                class="flex items-center gap-1.5 truncate"
-                :style="{ paddingLeft: `${entry.depth * 18}px` }"
+              <button
+                v-if="entry.item.children.length > 0"
+                type="button"
+                class="flex h-full min-h-11 w-full cursor-pointer items-center gap-1.5 px-3 text-left hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                :style="{ paddingLeft: `${12 + entry.depth * 18}px` }"
+                :aria-label="`Toggle child dari ${entry.item.wbs_no}: ${entry.item.activity_name ?? ''}`"
+                :aria-expanded="Boolean(expanded[entry.item.wbs_no])"
+                @click="toggleParentOnSingleClick(entry.item, $event)"
               >
-                <button
-                  v-if="entry.item.children.length > 0"
-                  type="button"
-                  class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                  :aria-label="`Toggle ${entry.item.wbs_no}`"
-                  :aria-expanded="Boolean(expanded[entry.item.wbs_no])"
-                  @click="emit('toggle', entry.item.wbs_no)"
+                <span
+                  class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-on-surface-variant"
+                  aria-hidden="true"
                 >
                   <ChevronDown
                     v-if="expanded[entry.item.wbs_no]"
                     class="h-4 w-4"
                   />
                   <ChevronRight v-else class="h-4 w-4" />
-                </button>
-                <span v-else class="inline-block h-5 w-5 shrink-0" />
+                </span>
+                <span
+                  class="truncate font-medium"
+                  :title="String(entry.item.activity_name ?? '')"
+                >
+                  {{ entry.item.activity_name ?? "-" }}
+                </span>
+              </button>
+              <div
+                v-else
+                class="flex h-full min-h-11 items-center gap-1.5 overflow-hidden px-3"
+                :style="{ paddingLeft: `${12 + entry.depth * 18}px` }"
+              >
+                <span class="inline-block h-5 w-5 shrink-0" />
                 <span
                   class="truncate font-medium"
                   :title="String(entry.item.activity_name ?? '')"
@@ -352,25 +582,25 @@ async function saveRow(item: WbsTreeItem): Promise<void> {
 
             <!-- Sisa Kolom dengan bg-white solid agar bersih saat digulir horizontal -->
             <td
-              class="h-16 w-[80px] border-b border-outline-variant/60 px-2 text-right tabular-nums text-on-surface whitespace-nowrap bg-white group-hover:bg-slate-50 transition-colors"
+              class="h-14 w-[80px] border-b border-outline-variant/60 px-2 text-right tabular-nums text-on-surface whitespace-nowrap bg-white group-hover:bg-slate-50 transition-colors"
             >
               {{ formatPercent(entry.item.bobot_plan) }}
             </td>
             <td
-              class="h-16 w-[80px] border-b border-outline-variant/60 px-2 text-right tabular-nums text-on-surface whitespace-nowrap bg-white group-hover:bg-slate-50 transition-colors"
+              class="h-14 w-[80px] border-b border-outline-variant/60 px-2 text-right tabular-nums text-on-surface whitespace-nowrap bg-white group-hover:bg-slate-50 transition-colors"
             >
               {{ formatPercent(entry.item.bobot_real) }}
             </td>
             <td
-              class="h-16 w-[80px] border-b border-outline-variant/60 px-3 text-on-surface-variant whitespace-nowrap bg-white group-hover:bg-slate-50 transition-colors"
+              class="h-14 w-[80px] border-b border-outline-variant/60 px-3 text-on-surface-variant whitespace-nowrap bg-white group-hover:bg-slate-50 transition-colors"
             >
               {{ entry.item.durasi ?? "-" }}
             </td>
             <td
-              class="h-16 w-[160px] border-b border-outline-variant/60 px-3 whitespace-nowrap bg-white group-hover:bg-slate-50 transition-colors"
+              class="h-14 w-[160px] border-b border-outline-variant/60 px-3 whitespace-nowrap bg-white group-hover:bg-slate-50 transition-colors"
             >
               <div
-                class="flex h-16 flex-col justify-center gap-0.5 whitespace-nowrap text-xs leading-4"
+                class="flex h-14 flex-col justify-center gap-0.5 whitespace-nowrap text-xs leading-4"
               >
                 <span class="text-on-surface-variant"
                   >P {{ planRange(entry.item) }}</span
@@ -387,7 +617,7 @@ async function saveRow(item: WbsTreeItem): Promise<void> {
               </div>
             </td>
             <td
-              class="h-16 w-[100px] border-b border-outline-variant/60 px-3 whitespace-nowrap bg-white group-hover:bg-slate-50 transition-colors"
+              class="h-14 w-[100px] border-b border-outline-variant/60 px-3 whitespace-nowrap bg-white group-hover:bg-slate-50 transition-colors"
             >
               <div v-if="isLeaf(entry.item)" class="flex items-center gap-2">
                 <template v-if="editingWbsNo === entry.item.wbs_no">
@@ -436,7 +666,7 @@ async function saveRow(item: WbsTreeItem): Promise<void> {
               </span>
             </td>
             <td
-              class="h-16 w-[100px] border-b border-outline-variant/60 px-3 whitespace-nowrap bg-white group-hover:bg-slate-50 transition-colors"
+              class="h-14 w-[100px] border-b border-outline-variant/60 px-3 whitespace-nowrap bg-white group-hover:bg-slate-50 transition-colors"
             >
               <span
                 v-if="
@@ -451,7 +681,7 @@ async function saveRow(item: WbsTreeItem): Promise<void> {
               </span>
             </td>
             <td
-              class="h-16 w-[80px] border-b border-outline-variant/60 px-3 bg-white group-hover:bg-slate-50 transition-colors text-center"
+              class="h-14 w-[80px] border-b border-outline-variant/60 px-3 bg-white group-hover:bg-slate-50 transition-colors text-center"
             >
               <div v-if="editingWbsNo === entry.item.wbs_no" class="flex gap-1">
                 <button
@@ -494,9 +724,11 @@ async function saveRow(item: WbsTreeItem): Promise<void> {
               :item="entry.item"
               :periods="periods"
               :progress-values="weeklyByWbs[entry.item.wbs_no]?.progress ?? []"
+              :expanded="Boolean(expanded[entry.item.wbs_no])"
+              @toggle="emit('toggle', $event)"
             />
           </tr>
-        </tbody>
+        </TransitionGroup>
       </table>
     </div>
 
@@ -534,5 +766,111 @@ async function saveRow(item: WbsTreeItem): Promise<void> {
         </div>
       </section>
     </div>
+
+    <div
+      v-if="showProgressReductionDialog && pendingProgressItem"
+      class="fixed inset-0 z-[100] flex items-center justify-center bg-on-surface/40 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="wbs-progress-reduction-title"
+    >
+      <section
+        class="w-full max-w-lg rounded-xl border border-outline-variant bg-surface-lowest p-5 shadow-xl"
+      >
+        <h2
+          id="wbs-progress-reduction-title"
+          class="text-base font-semibold text-on-surface"
+        >
+          Konfirmasi pengurangan progres
+        </h2>
+        <p class="mt-1 text-sm text-on-surface-variant">
+          {{ pendingProgressItem.wbs_no }} ·
+          {{ pendingProgressItem.activity_name ?? "-" }}:
+          {{ formatPercent(pendingProgressItem.latest_progress_percent) }}
+          menjadi {{ getDraft(pendingProgressItem) }}%
+        </p>
+        <p class="mt-2 text-xs text-on-surface-variant">
+          {{
+            user?.role === "PA"
+              ? "Pengajuan akan dikirim ke VP. Progres belum berubah sampai disetujui."
+              : "Jika dikonfirmasi, perubahan akan langsung disimpan dan dicatat di riwayat."
+          }}
+        </p>
+        <label class="mt-4 block space-y-1.5">
+          <span class="text-sm font-medium text-on-surface">
+            Alasan
+            <span v-if="user?.role === 'PA'" class="text-error">*</span>
+            <span v-else class="text-on-surface-variant">(opsional)</span>
+          </span>
+          <textarea
+            v-model="progressComment"
+            rows="4"
+            maxlength="2000"
+            :required="user?.role === 'PA'"
+            aria-label="Alasan perubahan progres"
+            :aria-invalid="Boolean(commentError)"
+            class="w-full resize-y rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            placeholder="Jelaskan alasan perubahan progres..."
+            @input="commentError = ''"
+          />
+        </label>
+        <p v-if="commentError" role="alert" class="mt-1 text-xs text-error">
+          {{ commentError }}
+        </p>
+        <div class="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            class="h-9 rounded border border-outline-variant px-4 text-sm font-medium text-on-surface-variant hover:bg-surface"
+            @click="cancelProgressReduction"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            class="h-9 rounded bg-primary px-4 text-sm font-medium text-on-primary hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="savingWbsNo !== null"
+            @click="confirmProgressReduction"
+          >
+            {{ user?.role === "PA" ? "Kirim pengajuan" : "Konfirmasi & simpan" }}
+          </button>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.wbs-rows-enter-active,
+.wbs-rows-leave-active,
+.wbs-rows-move {
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.wbs-rows-enter-from,
+.wbs-rows-leave-to {
+  opacity: 0;
+  transform: translateY(-5px);
+}
+
+.wbs-table-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 transparent;
+}
+
+.wbs-table-scroll::-webkit-scrollbar:horizontal {
+  height: 6px;
+}
+
+.wbs-table-scroll::-webkit-scrollbar-track:horizontal {
+  background: transparent;
+}
+
+.wbs-table-scroll::-webkit-scrollbar-thumb:horizontal {
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  background: #94a3b8;
+  background-clip: padding-box;
+}
+</style>

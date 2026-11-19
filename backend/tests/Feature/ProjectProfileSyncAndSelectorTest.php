@@ -2,7 +2,12 @@
 
 use App\Models\MasterProject;
 use App\Models\ProjectProfile;
+use App\Models\User;
 use App\Services\GoogleSheetsService;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->create(['role' => User::ROLE_VP]));
+});
 
 function profileSyncProject(array $attributes = []): MasterProject
 {

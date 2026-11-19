@@ -37,6 +37,53 @@ export const wbsService = {
     return withWbsErrorHandling(() => api.get(`/projects/${id}/wbs`));
   },
 
+  getProgressChanges(id, page = 1) {
+    if (!id) return Promise.reject(new Error("Project ID is required."));
+    return withWbsErrorHandling(() =>
+      api.get(`/projects/${id}/wbs/progress-changes`, { params: { page } }),
+    );
+  },
+
+  getProgressChangeRequests(id, page = 1, status = "pending") {
+    if (!id) return Promise.reject(new Error("Project ID is required."));
+    return withWbsErrorHandling(() =>
+      api.get(`/projects/${id}/wbs/progress-change-requests`, {
+        params: { page, status },
+      }),
+    );
+  },
+
+  getMyProgressChangeRequests(id, page = 1, status = "all") {
+    if (!id) return Promise.reject(new Error("Project ID is required."));
+    return withWbsErrorHandling(() =>
+      api.get(`/projects/${id}/wbs/my-progress-change-requests`, {
+        params: { page, status },
+      }),
+    );
+  },
+
+  reviewProgressChangeRequest(id, requestId, decision, note = "") {
+    if (!id) return Promise.reject(new Error("Project ID is required."));
+    const body = { decision };
+    if (note && note.trim()) body.note = note.trim();
+    return withWbsErrorHandling(() =>
+      api.patch(
+        `/projects/${id}/wbs/progress-change-requests/${requestId}`,
+        body,
+      ),
+    );
+  },
+
+  requestProgressDecrease(id, wbsNo, percent, comment) {
+    if (!id) return Promise.reject(new Error("Project ID is required."));
+    return withWbsErrorHandling(() =>
+      api.post(
+        `/projects/${id}/wbs/${encodeURIComponent(wbsNo)}/progress-change-requests`,
+        { percent, comment },
+      ),
+    );
+  },
+
   getWbsWeekly(id, month = "all") {
     if (!id) return Promise.reject(new Error("Project ID is required."));
     return withWbsErrorHandling(() =>
@@ -77,11 +124,12 @@ export const wbsService = {
     return withWbsErrorHandling(() => api.post(`/projects/${id}/wbs/sync`));
   },
 
-  updateWbsProgress(id, wbsNo, percent) {
+  updateWbsProgress(id, wbsNo, percent, comment) {
     if (!id) return Promise.reject(new Error("Project ID is required."));
     return withWbsErrorHandling(() =>
       api.put(`/projects/${id}/wbs/${encodeURIComponent(wbsNo)}/progress`, {
         percent,
+        ...(comment === undefined ? {} : { comment }),
       }),
     );
   },

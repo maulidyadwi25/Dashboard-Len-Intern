@@ -1,16 +1,43 @@
 <script setup>
-import { computed } from "vue";
-import { useRoute } from "vue-router";
-import { LayoutDashboard, ChevronDown } from "lucide-vue-next";
+import { computed, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { LayoutDashboard, LogOut } from "lucide-vue-next";
+import { useAuth } from "../../composables/useAuth";
+import ProgressNotifications from "./ProgressNotifications.vue";
 
 const route = useRoute();
+const router = useRouter();
+const { user, logout } = useAuth();
 
 const activePath = computed(() => route.path);
+const displayName = computed(() => user.value?.name ?? "User");
+const displayRole = computed(() =>
+  user.value?.role === "VP" ? "Vice President" : "Project Analyst",
+);
+const logoutError = ref(false);
+const avatarInitials = computed(() =>
+  displayName.value
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0))
+    .join("")
+    .toUpperCase(),
+);
 
 const linkClass = (path) =>
   activePath.value === path
     ? "px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 bg-blue-600 text-white shadow-xs"
     : "px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60";
+
+async function signOut() {
+  logoutError.value = false;
+  try {
+    await logout();
+    await router.replace({ name: "Login" });
+  } catch {
+    logoutError.value = true;
+  }
+}
 </script>
 
 <template>
@@ -58,25 +85,49 @@ const linkClass = (path) =>
         >
           Progress &amp; Revenue
         </router-link>
+        <router-link
+          v-if="user?.role === 'VP'"
+          to="/progress-approval"
+          :class="linkClass('/progress-approval')"
+        >
+          Persetujuan Progres
+        </router-link>
       </nav>
 
       <!-- User Profile -->
       <div class="flex items-center gap-3">
+        <ProgressNotifications />
         <div
           class="w-9 h-9 rounded-full bg-slate-700 text-white font-bold text-xs flex items-center justify-center border-2 border-white shadow-xs"
         >
-          MS
+          {{ avatarInitials }}
         </div>
         <div class="text-right hidden sm:block">
           <div class="flex items-center gap-1">
             <span class="text-xs font-bold text-slate-800"
-              >Marcus Sterling</span
+              >{{ displayName }}</span
             >
-            <ChevronDown class="w-3.5 h-3.5 text-slate-400" />
           </div>
-          <p class="text-[11px] text-slate-500 font-medium">Project Director</p>
+          <p class="text-[11px] text-slate-500 font-medium">{{ displayRole }}</p>
         </div>
+        <button
+          type="button"
+          class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+          aria-label="Keluar"
+          title="Keluar"
+          @click="signOut"
+        >
+          <LogOut class="h-4 w-4" />
+          <span class="hidden sm:inline">Keluar</span>
+        </button>
       </div>
     </div>
+    <p
+      v-if="logoutError"
+      role="alert"
+      class="mx-auto mt-2 max-w-[1600px] text-right text-xs text-red-600"
+    >
+      Sesi tidak dapat ditutup dengan sempurna. Silakan masuk kembali.
+    </p>
   </header>
 </template>

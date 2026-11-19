@@ -54,7 +54,7 @@ export interface WbsPeriod {
 }
 
 export interface WbsBarSegment {
-  kind: "plan" | "actual" | "extension" | "parent";
+  kind: "plan" | "actual" | "critical" | "parent";
   tone: "plan" | "actual" | "critical" | "parent";
   startOrdinal: number;
   endOrdinal: number;
@@ -274,58 +274,53 @@ export function buildWbsBarLayout(
 ): WbsBarSegment[] {
   if (periods.length === 0) return [];
 
-  if (item.children.length > 0) {
+  if (item.level === 1 || item.children.length > 0) {
     const leaves = descendantLeaves(item);
-    const segments: WbsBarSegment[] = [];
-    const planRanges = leaves
-      .map((leaf) => ({
+    const planRanges = [
+      ...leaves.map((leaf) => ({
         start: leaf.plan_start_ordinal ?? null,
         finish: leaf.plan_end_ordinal ?? null,
-      }))
-      .filter(
-        (range): range is { start: number; finish: number } =>
-          range.start !== null && range.finish !== null,
-      );
-    if (planRanges.length > 0) {
-      const planStart = Math.min(...planRanges.map((range) => range.start));
-      const planFinish = Math.max(...planRanges.map((range) => range.finish));
-      appendSegment(
-        segments,
-        "plan",
-        "plan",
-        planStart,
-        planFinish,
-        periods,
-        `Plan: ${periodLabel(planStart)} - ${periodLabel(planFinish)}`,
-      );
-    }
-
+      })),
+      {
+        start: item.plan_start_ordinal ?? null,
+        finish: item.plan_end_ordinal ?? null,
+      },
+    ].filter(
+      (range): range is { start: number; finish: number } =>
+        range.start !== null && range.finish !== null,
+    );
     const actualRanges = leaves.flatMap((leaf) => leafRanges(leaf, weeklyValues));
-    if (actualRanges.length > 0) {
-      const actualStart = Math.min(...actualRanges.map((range) => range.start));
-      const allLeavesComplete = leaves.every((leaf) => {
-        const leafEntries = progressEntriesFor(leaf, weeklyValues);
-        return (
-          leaf.actual_progress_finish_ordinal !== null &&
-          leaf.actual_progress_finish_ordinal !== undefined
-        ) ||
-          (leaf.latest_progress_percent !== null &&
-            leaf.latest_progress_percent >= 100) ||
-          (leafEntries.length > 0 && leafEntries[leafEntries.length - 1].value >= 100);
-      });
-      const actualFinish = allLeavesComplete
-        ? Math.max(...actualRanges.map((range) => range.finish))
-        : currentJakartaWeekOrdinal();
-      appendSegment(
-        segments,
-        "parent",
-        "parent",
-        actualStart,
-        actualFinish,
-        periods,
-        `Actual: ${periodLabel(actualStart)} - ${periodLabel(actualFinish)}`,
-      );
-    }
+
+    const periodOrdinals = periods.map(
+      (period) =>
+        (period.ordinal ??
+          (period.year * 48 + (period.month - 1) * 4 + period.week - 1)) +
+        1,
+    );
+    const summaryRanges =
+      planRanges.length > 0 ? planRanges : actualRanges;
+    const start = summaryRanges.length > 0
+      ? Math.min(...summaryRanges.map((range) => range.start))
+      : item.level === 1
+        ? Math.min(...periodOrdinals)
+        : null;
+    const finish = summaryRanges.length > 0
+      ? Math.max(...summaryRanges.map((range) => range.finish))
+      : item.level === 1
+        ? Math.max(...periodOrdinals)
+        : null;
+    if (start === null || finish === null) return [];
+
+    const segments: WbsBarSegment[] = [];
+    appendSegment(
+      segments,
+      "parent",
+      "parent",
+      start,
+      finish,
+      periods,
+      `Ringkasan proyek: ${periodLabel(start)} - ${periodLabel(finish)}`,
+    );
     return segments;
   }
 
@@ -338,7 +333,10 @@ export function buildWbsBarLayout(
   const planFinish = item.plan_end_ordinal ?? null;
   const actualStart = progressStart ?? item.actual_start_ordinal ?? null;
   const actualFinish =
-    item.actual_finish_ordinal ?? latestProgress?.ordinal ?? null;
+    item.actual_progress_finish_ordinal ??
+    latestProgress?.ordinal ??
+    item.actual_finish_ordinal ??
+    null;
   const progressLabel = latestProgress
     ? `Progres: ${latestProgress.value}% (${latestProgress.label})`
     : item.latest_progress_percent === null
@@ -361,33 +359,27 @@ export function buildWbsBarLayout(
 
   if (actualStart === null || actualFinish === null) return segments;
 
-  const status = item.status ?? "on_track";
-  const startsLate = planFinish !== null && actualStart > planFinish;
-  const lateTone = status === "overdue" || status === "critical" || startsLate
-    ? "critical"
-    : "actual";
   const actualTooltip = `Actual: ${rangeLabel(actualStart, actualFinish)} · ${progressLabel}`;
+  const hasCriticalRange =
+    item.status === "critical" || item.status === "overdue";
+  const criticalStart =
+    hasCriticalRange && planFinish !== null && actualFinish > planFinish
+      ? Math.max(actualStart, planFinish + 1)
+      : hasCriticalRange
+        ? actualStart
+        : null;
 
-  if (planFinish !== null && actualFinish > planFinish) {
+  if (criticalStart !== null && criticalStart > actualStart) {
     appendSegment(
       segments,
       "actual",
-      startsLate ? "critical" : "actual",
+      "actual",
       actualStart,
-      Math.min(actualFinish, planFinish),
+      criticalStart - 1,
       periods,
       actualTooltip,
     );
-    appendSegment(
-      segments,
-      "extension",
-      lateTone,
-      Math.max(actualStart, planFinish + 1),
-      actualFinish,
-      periods,
-      actualTooltip,
-    );
-  } else {
+  } else if (criticalStart === null) {
     appendSegment(
       segments,
       "actual",
@@ -396,6 +388,18 @@ export function buildWbsBarLayout(
       actualFinish,
       periods,
       actualTooltip,
+    );
+  }
+
+  if (criticalStart !== null) {
+    appendSegment(
+      segments,
+      "critical",
+      "critical",
+      criticalStart,
+      actualFinish,
+      periods,
+      `Kritis: ${rangeLabel(criticalStart, actualFinish)} · ${progressLabel}`,
     );
   }
 

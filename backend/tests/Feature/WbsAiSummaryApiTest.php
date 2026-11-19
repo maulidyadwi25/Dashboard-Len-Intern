@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\MasterProject;
+use App\Models\User;
 use App\Models\WbsAiSummary;
 use App\Models\WbsItem;
 use App\Models\WbsProgressEntry;
@@ -56,6 +57,7 @@ function wbsAiSummaryItem(MasterProject $project, string $wbsNo, array $attribut
 }
 
 beforeEach(function () {
+    $this->actingAs(User::factory()->create(['role' => User::ROLE_VP]));
     Carbon::setTestNow(Carbon::parse('2026-01-15 08:00:00', 'Asia/Jakarta'));
     Http::preventStrayRequests();
 });

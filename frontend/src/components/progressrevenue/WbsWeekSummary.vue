@@ -29,7 +29,7 @@ const statusLabels: Record<string, string> = {
 };
 
 const statusClasses: Record<string, string> = {
-  not_started: "bg-surface text-on-surface-variant",
+  not_started: "bg-surface-container text-on-surface-variant",
   on_track: "bg-emerald-50 text-emerald-700",
   overdue: "bg-amber-100 text-amber-900",
   critical: "bg-error-container text-error",
@@ -43,7 +43,7 @@ function formatPercent(value: number): string {
 <template>
   <section
     aria-label="Ringkasan WBS pekan ini"
-    class="flex flex-col overflow-hidden rounded-2xl border border-outline-variant bg-surface-lowest shadow-sm"
+    class="flex flex-col overflow-hidden rounded-2xl bg-surface-container-lowest transition-all"
   >
     <!-- Header -->
     <header
@@ -54,20 +54,17 @@ function formatPercent(value: number): string {
       </h2>
       <span
         v-if="weekLabel"
-        class="text-xs font-medium text-on-surface-variant bg-surface px-2.5 py-1 rounded-full border border-outline-variant"
+        class="text-xs font-medium text-on-surface-variant bg-surface-container px-2.5 py-1 rounded-full"
       >
         {{ weekLabel }}
       </span>
     </header>
 
-    <!-- Garis bawah terpisah -->
-    <div class="mx-5 border-b border-outline-variant"></div>
-
     <!-- State: Error, Loading, Empty -->
     <div
       v-if="error"
       role="alert"
-      class="m-4 rounded-xl border border-error/30 bg-error-container p-4 text-sm text-error"
+      class="m-4 rounded-xl bg-error-container p-4 text-sm text-error"
     >
       {{ error }}
     </div>
@@ -85,13 +82,17 @@ function formatPercent(value: number): string {
       Tidak ada aktivitas WBS berstatus Critical pekan ini.
     </div>
 
-    <!-- Content List -->
     <div v-else class="space-y-3 p-4">
       <article
         v-for="item in criticalItems"
         :key="item.wbs_no"
-        class="group relative flex flex-col gap-3 rounded-xl border border-outline-variant/60 bg-surface-lowest p-4 transition-all hover:border-primary/40 hover:shadow-md"
+        class="group relative flex flex-col gap-3 rounded-xl bg-surface-container-low p-4 pl-5 transition-all duration-200 hover:bg-surface-container hover:pl-6"
       >
+        <!-- Garis Aksen Sisi Kiri (Pengganti Border Luar) -->
+        <div
+          class="absolute inset-y-0 left-0 w-1.5 rounded-l-xl bg-primary"
+        ></div>
+
         <!-- Top Info: WBS, Name, & Status -->
         <div class="flex items-start justify-between gap-4">
           <div class="space-y-0.5 min-w-0">
@@ -128,11 +129,6 @@ function formatPercent(value: number): string {
           </div>
           <div
             class="h-2 w-full overflow-hidden rounded-full bg-surface-container"
-            role="progressbar"
-            :aria-valuenow="item.latest_progress_percent"
-            aria-valuemin="0"
-            aria-valuemax="100"
-            :aria-label="`Progres ${item.wbs_no}`"
           >
             <div
               class="h-full rounded-full bg-primary transition-all duration-500"
@@ -145,7 +141,7 @@ function formatPercent(value: number): string {
 
         <!-- Footer Info: Deviation -->
         <div
-          class="flex items-center justify-between border-t border-outline-variant/40 pt-2.5 text-xs"
+          class="flex items-center justify-between pt-2.5 text-xs border-t border-outline-variant/20"
         >
           <span class="text-on-surface-variant">Deviasi Jadwal</span>
           <span

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Download, Info, Pencil } from "lucide-vue-next";
+import { ClipboardCheck, Download, Info } from "lucide-vue-next";
 
 interface WbsSummary {
   total_on_track: number;
@@ -10,10 +10,13 @@ interface WbsSummary {
 defineProps<{
   summary: WbsSummary;
   canDownload: boolean;
+  canReviewApprovals: boolean;
+  pendingApprovalCount: number | null;
 }>();
 
 const emit = defineEmits<{
   download: [];
+  openApprovals: [];
 }>();
 
 const legends = [
@@ -45,7 +48,7 @@ const bars = [
     <!-- Grid Ringkasan (Card kecil yang memiliki background & border) -->
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <article
-        class="rounded-2xl border border-outline-variant/60 bg-surface p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
+        class="rounded-xl bg-surface p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
       >
         <p
           class="flex items-center justify-between text-xs font-medium text-on-surface-variant"
@@ -62,7 +65,7 @@ const bars = [
       </article>
 
       <article
-        class="rounded-2xl border border-outline-variant/60 bg-surface p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
+        class="rounded-xl bg-surface p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
       >
         <p
           class="flex items-center justify-between text-xs font-medium text-on-surface-variant"
@@ -79,7 +82,7 @@ const bars = [
       </article>
 
       <article
-        class="rounded-2xl border border-outline-variant/60 bg-surface p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
+        class="rounded-xl bg-surface p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
       >
         <p
           class="flex items-center justify-between text-xs font-medium text-on-surface-variant"
@@ -151,6 +154,21 @@ const bars = [
         <div
           class="flex shrink-0 items-center gap-2 pt-2 lg:pt-0 lg:border-l lg:border-outline-variant/40 lg:pl-4"
         >
+          <button
+            v-if="canReviewApprovals"
+            type="button"
+            class="inline-flex h-9 items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3.5 text-xs font-medium text-primary transition hover:bg-primary/10 shadow-xs"
+            @click="emit('openApprovals')"
+          >
+            <ClipboardCheck class="h-3.5 w-3.5" />
+            <span>Antrean Persetujuan Progres</span>
+            <span
+              v-if="pendingApprovalCount !== null"
+              class="inline-flex min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white"
+            >
+              {{ pendingApprovalCount }}
+            </span>
+          </button>
           <button
             type="button"
             class="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-3.5 text-xs font-medium text-on-primary transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50 shadow-xs"

@@ -8,7 +8,6 @@ import { useProject } from "@/composables/useProject";
 
 import ExecutiveHeader from "@/components/common/ExecutiveHeader.vue";
 import Footer from "@/components/common/Footer.vue";
-import ProjectSelectorBar from "@/components/common/ProjectSelectorBar.vue";
 import ProjectProfileCard from "@/components/common/ProjectProfileCard.vue";
 import BudgetSummaryCards from "@/components/budget-monitoring/BudgetSummaryCards.vue";
 import BudgetBreakdownTable from "@/components/budget-monitoring/BudgetBreakdownTable.vue";
@@ -168,8 +167,6 @@ const handleDownloadPdf = () => {
     <main
       class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-6 space-y-2"
     >
-      <ProjectSelectorBar />
-
       <!-- State Loading -->
       <div v-if="isLoading" class="flex h-64 items-center justify-center">
         <div

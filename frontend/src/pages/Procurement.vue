@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import ExecutiveHeader from "@/components/common/ExecutiveHeader.vue";
-import ProjectSelectorBar from "@/components/common/ProjectSelectorBar.vue";
 import ProjectProfileCard from "@/components/common/ProjectProfileCard.vue";
 import ProcurementStatusMonitoring from "@/components/procurement/ProcurementStatusMonitoring.vue";
 import ProcurementMetrics from "@/components/procurement/ProcurementMetrics.vue";
@@ -111,9 +110,6 @@ const updateStartDate = (itemId, newDateStr) => {
     <main
       class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-6 space-y-2"
     >
-      <!-- Project Selector Bar -->
-      <ProjectSelectorBar />
-
       <!-- Project Profile Card -->
       <ProjectProfileCard :projectInfo="projectMeta" />
 

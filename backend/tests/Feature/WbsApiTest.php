@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\MasterProject;
+use App\Models\User;
 use App\Models\WbsItem;
 use App\Models\WbsProgressEntry;
 use App\Models\WbsWeeklyValue;
@@ -102,6 +103,7 @@ function wbsApiFakeService(): GoogleSheetsService
 }
 
 beforeEach(function () {
+    $this->actingAs(User::factory()->create(['role' => User::ROLE_VP]));
     $this->app->instance(GoogleSheetsService::class, wbsApiFakeService());
 });
 

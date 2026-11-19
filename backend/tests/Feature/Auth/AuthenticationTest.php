@@ -4,12 +4,6 @@ use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Fortify\Features;
 
-test('login screen can be rendered', function () {
-    $response = $this->get(route('login'));
-
-    $response->assertOk();
-});
-
 test('users can authenticate using the login screen', function () {
     $user = User::factory()->create();
 
@@ -19,7 +13,48 @@ test('users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect('/dashboard');
+    $this->getJson('/api/user')
+        ->assertOk()
+        ->assertJsonPath('data.role', User::ROLE_PA);
+});
+
+test('guests cannot read project APIs or submit progress', function () {
+    $this->getJson('/api/projects')->assertUnauthorized();
+    $this->getJson('/api/user')->assertUnauthorized();
+    $this->putJson('/api/projects/1/wbs/1.1.1/progress', [
+        'percent' => 10,
+        'comment' => 'Unauthenticated update.',
+    ])->assertUnauthorized();
+});
+
+test('public registration is unavailable', function () {
+    $this->postJson('/register', [
+        'name' => 'Public User',
+        'email' => 'public@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ])->assertNotFound();
+});
+
+test('users without a progress role cannot update WBS progress', function () {
+    $user = User::factory()->create(['role' => 'XX']);
+
+    $this->actingAs($user)
+        ->putJson('/api/projects/1/wbs/1.1.1/progress', ['percent' => 10])
+        ->assertForbidden();
+});
+
+test('sheet cron requires a configured secret', function () {
+    config(['services.cron.secret' => null]);
+
+    $this->getJson('/api/cron/sync-sheets')
+        ->assertServiceUnavailable();
+
+    config(['services.cron.secret' => 'configured-secret']);
+
+    $this->getJson('/api/cron/sync-sheets?secret=wrong-secret')
+        ->assertUnauthorized();
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {
@@ -32,7 +67,7 @@ test('users with two factor enabled are redirected to two factor challenge', fun
 
     $user = User::factory()->withTwoFactor()->create();
 
-    $response = $this->post(route('login'), [
+    $response = $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'password',
     ]);
@@ -56,11 +91,16 @@ test('users can not authenticate with invalid password', function () {
 test('users can logout', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->post(route('logout'));
+    $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ])->assertRedirect('/dashboard');
 
-    $response->assertRedirect(route('home'));
+    $this->withHeader('Origin', 'http://localhost:5173')
+        ->postJson('/api/logout')
+        ->assertOk();
 
-    $this->assertGuest();
+    $this->assertGuest('web');
 });
 
 test('users are rate limited', function () {

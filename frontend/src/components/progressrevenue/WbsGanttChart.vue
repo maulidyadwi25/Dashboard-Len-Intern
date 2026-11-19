@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import {
   buildWbsBarLayout,
   currentJakartaWeekOrdinal,
@@ -14,6 +14,11 @@ const props = defineProps<{
   periods: WbsPeriod[];
   item?: WbsTreeItem;
   progressValues?: WbsWeeklyValue[];
+  expanded?: boolean;
+}>();
+
+const emit = defineEmits<{
+  toggle: [wbsNo: string];
 }>();
 
 const monthNames = [
@@ -32,7 +37,11 @@ const monthNames = [
 ];
 const trackWidth = 36;
 const clockTick = ref(0);
+const activeTooltipIndex = ref<number | null>(null);
+const tooltipElement = ref<HTMLElement | null>(null);
+const tooltipPosition = ref({ left: 0, top: 0 });
 let clockInterval: ReturnType<typeof setInterval> | undefined;
+let tooltipTimer: ReturnType<typeof setTimeout> | undefined;
 
 onMounted(() => {
   clockInterval = setInterval(() => {
@@ -42,6 +51,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (clockInterval !== undefined) clearInterval(clockInterval);
+  if (tooltipTimer !== undefined) clearTimeout(tooltipTimer);
 });
 
 const timelinePeriods = computed(() => {
@@ -49,15 +59,27 @@ const timelinePeriods = computed(() => {
   const periods = [...props.periods];
   if (periods.length === 0) return periods;
 
-  const isContinuous = periods.every((period, index) =>
-    index === 0 ||
-    (period.ordinal ?? (period.year * 48 + (period.month - 1) * 4 + period.week - 1)) ===
-      (periods[index - 1].ordinal ?? (periods[index - 1].year * 48 + (periods[index - 1].month - 1) * 4 + periods[index - 1].week - 1)) + 1,
+  const isContinuous = periods.every(
+    (period, index) =>
+      index === 0 ||
+      (period.ordinal ??
+        period.year * 48 + (period.month - 1) * 4 + period.week - 1) ===
+        (periods[index - 1].ordinal ??
+          periods[index - 1].year * 48 +
+            (periods[index - 1].month - 1) * 4 +
+            periods[index - 1].week -
+            1) +
+          1,
   );
   if (!isContinuous) return periods;
 
   const currentOrdinal = currentJakartaWeekOrdinal();
-  let lastOrdinal = (periods[periods.length - 1].ordinal ?? (periods[periods.length - 1].year * 48 + (periods[periods.length - 1].month - 1) * 4 + periods[periods.length - 1].week - 1)) + 1;
+  let lastOrdinal =
+    (periods[periods.length - 1].ordinal ??
+      periods[periods.length - 1].year * 48 +
+        (periods[periods.length - 1].month - 1) * 4 +
+        periods[periods.length - 1].week -
+        1) + 1;
 
   while (lastOrdinal < currentOrdinal) {
     const ordinal = lastOrdinal + 1;
@@ -79,7 +101,9 @@ const timelinePeriods = computed(() => {
   return periods;
 });
 
-const gridWidth = computed(() => `${timelinePeriods.value.length * trackWidth}px`);
+const gridWidth = computed(
+  () => `${timelinePeriods.value.length * trackWidth}px`,
+);
 const gridColumns = computed(() =>
   timelinePeriods.value.length > 0
     ? `repeat(${timelinePeriods.value.length}, ${trackWidth}px)`
@@ -87,7 +111,12 @@ const gridColumns = computed(() =>
 );
 
 const monthGroups = computed(() => {
-  const groups: Array<{ month: number; year: number; label: string; span: number }> = [];
+  const groups: Array<{
+    month: number;
+    year: number;
+    label: string;
+    span: number;
+  }> = [];
 
   for (const period of timelinePeriods.value) {
     const last = groups[groups.length - 1];
@@ -119,21 +148,131 @@ const segments = computed(() => {
 const currentWeekColumn = computed(() => {
   clockTick.value;
   return timelinePeriods.value.findIndex(
-    (period) => (period.ordinal ?? (period.year * 48 + (period.month - 1) * 4 + period.week - 1)) + 1 === currentJakartaWeekOrdinal(),
+    (period) =>
+      (period.ordinal ??
+        period.year * 48 + (period.month - 1) * 4 + period.week - 1) +
+        1 ===
+      currentJakartaWeekOrdinal(),
   );
 });
 
 const toneClasses: Record<WbsBarSegment["tone"], string> = {
-  plan: "bg-blue-200",
-  actual: "bg-blue-600",
-  critical: "bg-red-700",
-  parent: "bg-slate-500",
+  plan: "border border-slate-200 bg-blue-200 rounded-lg",
+  actual: "border border-blue-200 bg-blue-600 rounded-lg",
+  critical: "border border-red-200 bg-red-700 rounded-lg",
+  parent: "border border-slate-300 bg-slate-600 rounded-lg",
 };
 
 function segmentTop(segment: WbsBarSegment): string {
-  if (segment.kind === "plan") return "14px";
-  if (segment.kind === "parent") return "27px";
-  return "42px";
+  if (segment.kind === "parent") return "24px";
+  if (segment.kind === "plan") return "18px";
+  return "22px";
+}
+
+function segmentClass(segment: WbsBarSegment, index: number): string[] {
+  // Gunakan rounded yang sedikit lebih lonjong (rounded-md) agar ujungnya mulus
+  const classes = [
+    "absolute rounded-md transition-all",
+    toneClasses[segment.tone],
+  ];
+
+  if (segment.kind === "parent") {
+    classes.push("z-20 h-2");
+  } else if (segment.kind === "plan") {
+    classes.push("z-20 h-5");
+  } else {
+    classes.push("z-30 h-3");
+
+    // Logika sambungan (joins) untuk actual/critical agar menyatu mulus
+    const adjacentBefore = segments.value[index - 1];
+    const adjacentAfter = segments.value[index + 1];
+    const joinsPrevious =
+      (segment.kind === "actual" || segment.kind === "critical") &&
+      (adjacentBefore?.kind === "actual" ||
+        adjacentBefore?.kind === "critical") &&
+      adjacentBefore.endOrdinal + 1 === segment.startOrdinal;
+    const joinsNext =
+      (segment.kind === "actual" || segment.kind === "critical") &&
+      (adjacentAfter?.kind === "actual" ||
+        adjacentAfter?.kind === "critical") &&
+      segment.endOrdinal + 1 === adjacentAfter.startOrdinal;
+
+    if (joinsPrevious) classes.push("rounded-l-none border-l-0");
+    if (joinsNext) classes.push("rounded-r-none border-r-0");
+  }
+
+  return classes;
+}
+
+function formatOrdinal(ordinal: number): string {
+  const year = Math.floor((ordinal - 1) / 48);
+  const weekOfYear = (ordinal - 1) % 48;
+  return `${monthNames[Math.floor(weekOfYear / 4)]} W${(weekOfYear % 4) + 1} ${year}`;
+}
+
+async function positionTooltip(
+  target: HTMLElement,
+  pointerX: number,
+  pointerY: number,
+): Promise<void> {
+  await nextTick();
+  if (!tooltipElement.value) return;
+
+  const tooltipRect = tooltipElement.value.getBoundingClientRect();
+  const tableHeaderBottom =
+    target
+      .closest(".wbs-table-scroll")
+      ?.querySelector("thead")
+      ?.getBoundingClientRect().bottom ?? 0;
+  const gap = 12;
+  const preferredLeft = pointerX + gap;
+  const left =
+    preferredLeft + tooltipRect.width <= window.innerWidth - 8
+      ? preferredLeft
+      : pointerX - tooltipRect.width - gap;
+  const aboveTop = pointerY - tooltipRect.height - gap;
+  const top = aboveTop >= tableHeaderBottom + 8 ? aboveTop : pointerY + gap;
+
+  tooltipPosition.value = {
+    left: Math.max(
+      8,
+      Math.min(left, window.innerWidth - tooltipRect.width - 8),
+    ),
+    top: Math.max(
+      8,
+      Math.min(top, window.innerHeight - tooltipRect.height - 8),
+    ),
+  };
+}
+
+function showTooltip(index: number, event: MouseEvent): void {
+  if (tooltipTimer !== undefined) clearTimeout(tooltipTimer);
+  const target = event.currentTarget;
+  if (!(target instanceof HTMLElement)) return;
+  const { clientX, clientY } = event;
+
+  tooltipTimer = setTimeout(() => {
+    activeTooltipIndex.value = index;
+    void positionTooltip(target, clientX, clientY);
+  }, 200);
+}
+
+function hideTooltip(): void {
+  if (tooltipTimer !== undefined) clearTimeout(tooltipTimer);
+  activeTooltipIndex.value = null;
+}
+
+function progressLabel(): string {
+  const progressEntries = [...(props.progressValues ?? [])]
+    .filter((value) => value.type === "progress")
+    .sort((left, right) => {
+      const leftOrdinal = left.year * 48 + (left.month - 1) * 4 + left.week;
+      const rightOrdinal = right.year * 48 + (right.month - 1) * 4 + right.week;
+      return leftOrdinal - rightOrdinal;
+    });
+  const latestProgress = progressEntries[progressEntries.length - 1]?.value;
+  const progress = latestProgress ?? props.item?.latest_progress_percent;
+  return progress === null || progress === undefined ? "-" : `${progress}%`;
 }
 </script>
 
@@ -168,21 +307,15 @@ function segmentTop(segment: WbsBarSegment): string {
         </div>
       </div>
     </div>
-    <span
-      v-if="currentWeekColumn >= 0"
-      class="pointer-events-none absolute bottom-0 top-0 z-10 w-px bg-rose-500"
-      :style="{ left: `${currentWeekColumn * trackWidth + trackWidth / 2}px` }"
-      aria-hidden="true"
-    />
   </th>
 
   <td
     v-else
     :style="{ width: gridWidth, minWidth: gridWidth }"
-    class="relative z-0 h-16 border-b border-l border-slate-100 p-0 overflow-hidden"
+    class="relative z-0 h-14 border-b border-l border-slate-100 p-0 overflow-visible"
   >
     <div
-      class="relative isolate h-16 overflow-hidden"
+      class="relative isolate h-14 overflow-hidden"
       :style="{ width: gridWidth }"
     >
       <div
@@ -211,18 +344,44 @@ function segmentTop(segment: WbsBarSegment): string {
         <div
           v-for="(segment, index) in segments"
           :key="`${segment.kind}-${index}`"
-          class="absolute z-20 h-2.5 rounded-full"
-          :class="toneClasses[segment.tone]"
+          :class="segmentClass(segment, index)"
           :style="{
             gridColumn: `${segment.startColumn} / span ${segment.columnSpan}`,
             top: segmentTop(segment),
-            left: '2px',
-            right: '2px',
+            left: '0',
+            right: '0',
           }"
-          :title="segment.tooltip"
           :aria-label="segment.tooltip"
+          @mouseenter="showTooltip(index, $event)"
+          @mouseleave="hideTooltip"
         />
       </div>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="
+          activeTooltipIndex !== null && item && segments[activeTooltipIndex]
+        "
+        ref="tooltipElement"
+        class="pointer-events-none fixed z-[9999] w-max max-w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-[11px] leading-4 text-slate-700 shadow-lg"
+        :style="{
+          left: `${tooltipPosition.left}px`,
+          top: `${tooltipPosition.top}px`,
+        }"
+        role="tooltip"
+      >
+        <p class="mb-1 max-w-60 truncate font-semibold text-slate-900">
+          {{ item.activity_name ?? item.wbs_no }}
+        </p>
+        <p>
+          Mulai: {{ formatOrdinal(segments[activeTooltipIndex].startOrdinal) }}
+        </p>
+        <p>
+          Selesai: {{ formatOrdinal(segments[activeTooltipIndex].endOrdinal) }}
+        </p>
+        <p>Progres: {{ progressLabel() }}</p>
+      </div>
+    </Teleport>
   </td>
 </template>

@@ -46,4 +46,8 @@ return [
         'api_key' => env('AI_API_KEY'),
         'timeout' => env('AI_TIMEOUT', 30),
     ],
+
+    'cron' => [
+        'secret' => env('CRON_SECRET'),
+    ],
 ];

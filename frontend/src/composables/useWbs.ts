@@ -164,7 +164,7 @@ export function useWbs(
   }
 
   async function saveProgressBatch(
-    changes: Array<{ wbsNo: string; percent: number }>,
+    changes: Array<{ wbsNo: string; percent: number; comment?: string }>,
   ): Promise<Record<string, boolean>> {
     const results: Record<string, boolean> = {};
     let hasSuccessfulUpdate = false;
@@ -178,6 +178,7 @@ export function useWbs(
           currentProjectId.value,
           change.wbsNo,
           change.percent,
+          change.comment,
         );
         results[change.wbsNo] = true;
         hasSuccessfulUpdate = true;
@@ -194,6 +195,35 @@ export function useWbs(
     }
 
     return results;
+  }
+
+  async function requestProgressDecrease(
+    wbsNo: string,
+    percent: number,
+    comment: string,
+  ): Promise<boolean> {
+    if (currentProjectId.value === null) {
+      progressErrors.value[wbsNo] = "Pilih proyek sebelum mengirim pengajuan.";
+      return false;
+    }
+
+    savingWbsNo.value = wbsNo;
+    clearProgressError(wbsNo);
+
+    try {
+      await wbsService.requestProgressDecrease(
+        currentProjectId.value,
+        wbsNo,
+        percent,
+        comment,
+      );
+      return true;
+    } catch (requestError) {
+      progressErrors.value[wbsNo] = errorMessage(requestError);
+      return false;
+    } finally {
+      savingWbsNo.value = null;
+    }
   }
 
   watch(currentProjectId, (projectId) => {
@@ -240,5 +270,6 @@ export function useWbs(
     clearProgressError,
     sync,
     saveProgressBatch,
+    requestProgressDecrease,
   };
 }

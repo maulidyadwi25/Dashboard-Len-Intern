@@ -232,7 +232,7 @@ watch(
 <template>
   <section
     aria-label="Ringkasan dan rekomendasi AI"
-    class="flex min-h-[30rem] max-h-[70vh] flex-col overflow-hidden rounded-2xl border border-outline-variant/60 bg-surface-lowest shadow-sm transition-all"
+    class="flex min-h-[30rem] max-h-[70vh] flex-col overflow-hidden rounded-2xl bg-surface-container-lowest transition-all"
   >
     <!-- Header Wrapper -->
     <header
@@ -249,7 +249,7 @@ watch(
       <div v-if="!editing" class="flex shrink-0 items-center gap-2">
         <button
           type="button"
-          class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3.5 text-sm font-semibold text-on-primary shadow-sm transition-all hover:bg-primary-600 active:scale-95 disabled:cursor-wait disabled:opacity-50"
+          class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3.5 text-sm font-semibold text-on-primary transition-all hover:bg-primary-600 active:scale-95 disabled:cursor-wait disabled:opacity-50"
           :disabled="generating || loading"
           aria-label="Generate ulang ringkasan AI"
           title="Generate ulang"
@@ -263,7 +263,7 @@ watch(
         <button
           v-if="summary"
           type="button"
-          class="inline-flex h-9 items-center gap-2 rounded-lg border border-outline-variant/60 bg-surface px-3.5 text-sm font-medium text-on-surface transition-colors hover:bg-surface-container"
+          class="inline-flex h-9 items-center gap-2 rounded-lg bg-surface-container px-3.5 text-sm font-medium text-on-surface transition-colors hover:bg-surface-container-high"
           :disabled="generating || loading"
           aria-label="Edit ringkasan AI"
           title="Edit ringkasan"
@@ -289,7 +289,7 @@ watch(
         </button>
         <button
           type="button"
-          class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-outline-variant/60 bg-surface text-on-surface-variant transition-all hover:bg-surface-container-low disabled:opacity-50"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-surface-container text-on-surface-variant transition-all hover:bg-surface-container-high disabled:opacity-50"
           :disabled="saving"
           aria-label="Batalkan edit ringkasan"
           title="Batal"
@@ -300,15 +300,15 @@ watch(
       </div>
     </header>
 
-    <!-- Garis Pembatas (Menggantung / Tidak Sampai Ujung) -->
-    <div class="mx-5 border-b border-outline-variant/60"></div>
+    <!-- Garis Pemisah Tipis Tanpa Border Komponen Luar -->
+    <div class="mx-5 border-b border-surface-container"></div>
 
     <!-- Body Content -->
     <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
       <p
         v-if="errorMessage"
         role="alert"
-        class="rounded-xl border border-error/30 bg-error-container p-3 text-body-sm text-error shadow-sm"
+        class="rounded-xl bg-error-container p-3 text-body-sm text-error"
       >
         {{ errorMessage }}
         <span v-if="errorMessage.includes('AI gagal') && summary">
@@ -318,7 +318,7 @@ watch(
       <p
         v-if="syncWarning"
         role="status"
-        class="rounded-xl border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-950 shadow-sm"
+        class="rounded-xl bg-amber-50 p-3 text-sm text-amber-950"
       >
         {{ syncWarning }}
       </p>
@@ -345,46 +345,68 @@ watch(
         Belum ada ringkasan
       </p>
 
-      <!-- Edit Mode -->
+      <!-- Edit Mode - Opsi 2: Minimalist Seamless Input -->
       <template v-if="editing">
-        <div class="space-y-1.5">
-          <label
-            for="wbs-ai-executive"
-            class="text-sm font-medium text-on-surface-variant"
-            >Ringkasan</label
-          >
-          <textarea
-            id="wbs-ai-executive"
-            v-model="executiveSummaryDraft"
-            rows="4"
-            class="w-full rounded-xl border border-outline-variant/60 bg-surface px-4 py-3 text-body-base text-on-surface outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
-        <div class="space-y-1.5">
-          <label
-            for="wbs-ai-recommendations"
-            class="text-sm font-medium text-on-surface-variant"
-            >Rekomendasi</label
-          >
-          <textarea
-            id="wbs-ai-recommendations"
-            v-model="recommendationsDraft"
-            rows="5"
-            class="w-full rounded-xl border border-outline-variant/60 bg-surface px-4 py-3 text-body-base text-on-surface outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
-        <div class="space-y-1.5">
-          <label
-            for="wbs-ai-risks"
-            class="text-sm font-medium text-on-surface-variant"
-            >Risiko</label
-          >
-          <textarea
-            id="wbs-ai-risks"
-            v-model="risksDraft"
-            rows="4"
-            class="w-full rounded-xl border border-outline-variant/60 bg-surface px-4 py-3 text-body-base text-on-surface outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
+        <div class="space-y-4">
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <span
+                class="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary"
+              >
+                Ringkasan
+              </span>
+              <span class="text-xs text-on-surface-variant"
+                >Poin utama kondisi proyek</span
+              >
+            </div>
+            <textarea
+              id="wbs-ai-executive"
+              v-model="executiveSummaryDraft"
+              rows="4"
+              placeholder="Jelaskan ringkasan proyek di sini..."
+              class="w-full resize-none rounded-2xl bg-surface-container-lowest p-4 text-sm text-on-surface outline-none transition-all focus:bg-white focus:ring-2 focus:ring-primary/20 placeholder:text-on-surface-variant/40"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <span
+                class="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary"
+              >
+                Rekomendasi
+              </span>
+              <span class="text-xs text-on-surface-variant"
+                >Langkah strategis yang disarankan</span
+              >
+            </div>
+            <textarea
+              id="wbs-ai-recommendations"
+              v-model="recommendationsDraft"
+              rows="5"
+              placeholder="Tuliskan rekomendasi tindakan..."
+              class="w-full resize-none rounded-2xl bg-surface-container-lowest p-4 text-sm text-on-surface outline-none transition-all focus:bg-white focus:ring-2 focus:ring-primary/20 placeholder:text-on-surface-variant/40"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <span
+                class="rounded-lg bg-error-container/60 px-2.5 py-1 text-xs font-bold text-error"
+              >
+                Risiko
+              </span>
+              <span class="text-xs text-on-surface-variant"
+                >Hambatan yang perlu diantisipasi</span
+              >
+            </div>
+            <textarea
+              id="wbs-ai-risks"
+              v-model="risksDraft"
+              rows="4"
+              placeholder="Identifikasi potensi risiko..."
+              class="w-full resize-none rounded-2xl bg-surface-container-lowest p-4 text-sm text-on-surface outline-none transition-all focus:bg-white focus:ring-2 focus:ring-primary/20 placeholder:text-on-surface-variant/40"
+            />
+          </div>
         </div>
       </template>
 
@@ -398,7 +420,7 @@ watch(
             Ringkasan Eksekutif
           </h4>
           <p
-            class="whitespace-pre-wrap text-sm leading-relaxed text-on-surface"
+            class="whitespace-pre-wrap text-sm leading-relaxed text-on-surface text-justify"
           >
             {{ summary.content.executive_summary }}
           </p>
@@ -417,11 +439,11 @@ watch(
             <li
               v-for="(recommendation, index) in summary.content.recommendations"
               :key="`${recommendation.title}-${index}`"
-              class="group rounded-xl border border-outline-variant/50 bg-surface-lowest p-4 transition-all hover:border-primary/40 hover:shadow-sm"
+              class="group rounded-2xl bg-slate-50 p-4 transition-all duration-200 hover:translate-x-0.5"
             >
-              <div class="flex items-start gap-2.5">
+              <div class="flex items-start gap-3.5">
                 <span
-                  class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-container text-xs font-bold text-on-surface-variant"
+                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-xs font-bold text-on-primary"
                 >
                   {{ index + 1 }}
                 </span>
@@ -430,20 +452,17 @@ watch(
                     class="text-sm font-semibold text-on-surface flex flex-wrap items-center gap-2"
                   >
                     <span
-                      class="rounded-md px-2 py-0.5 text-xs font-semibold"
-                      :class="
-                        priorityClasses[recommendation.priority] ??
-                        'bg-surface-container text-on-surface-variant'
-                      "
-                      >{{
+                      class="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary"
+                    >
+                      {{
                         priorityLabels[recommendation.priority] ??
                         recommendation.priority
-                      }}</span
-                    >
+                      }}
+                    </span>
                     {{ recommendation.title }}
                   </p>
                   <p
-                    class="mt-1 text-sm leading-relaxed text-on-surface-variant"
+                    class="mt-1.5 text-sm leading-relaxed text-on-surface-variant text-justify"
                   >
                     {{ recommendation.detail }}
                   </p>
@@ -484,7 +503,7 @@ watch(
     <!-- Footer -->
     <footer
       v-if="summary"
-      class="flex flex-wrap items-center justify-between gap-2 border-t border-outline-variant/60 bg-surface-lowest px-5 py-3 text-body-sm text-on-surface-variant"
+      class="flex flex-wrap items-center justify-between gap-2 bg-surface-container-low px-5 py-3 text-body-sm text-on-surface-variant"
     >
       <span
         class="rounded-md bg-surface-container px-2.5 py-1 text-xs font-medium text-on-surface-variant"
@@ -503,7 +522,7 @@ watch(
       aria-labelledby="wbs-ai-confirm-title"
     >
       <section
-        class="w-full max-w-md rounded-2xl border border-outline-variant/60 bg-surface-lowest p-6 shadow-2xl transition-all"
+        class="w-full max-w-md rounded-2xl bg-surface-container-lowest p-6 shadow-2xl transition-all"
       >
         <h4
           id="wbs-ai-confirm-title"
@@ -514,14 +533,14 @@ watch(
         <div class="mt-6 flex justify-end gap-3">
           <button
             type="button"
-            class="h-9 rounded-lg border border-outline-variant/60 px-4 text-body-sm font-medium text-on-surface-variant transition-all hover:bg-surface"
+            class="h-9 rounded-lg bg-surface-container px-4 text-body-sm font-medium text-on-surface-variant transition-all hover:bg-surface-container-high"
             @click="confirmManualGenerate = false"
           >
             Batal
           </button>
           <button
             type="button"
-            class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-body-sm font-medium text-on-primary shadow-sm transition-all hover:bg-primary-600"
+            class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-body-sm font-medium text-on-primary transition-all hover:bg-primary-600"
             @click="generateSummary"
           >
             <RefreshCw class="h-4 w-4" />

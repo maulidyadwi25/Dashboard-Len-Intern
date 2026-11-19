@@ -1,8 +1,7 @@
 <script setup>
 import { ref, computed, watch } from "vue";
-import { onBeforeRouteLeave } from "vue-router";
+import { onBeforeRouteLeave, useRouter } from "vue-router";
 import ExecutiveHeader from "@/components/common/ExecutiveHeader.vue";
-import ProjectSelectorBar from "@/components/common/ProjectSelectorBar.vue";
 import ProjectProfileCard from "@/components/common/ProjectProfileCard.vue";
 import ProgressRevenueTable from "@/components/progressrevenue/ProgressRevenueTable.vue";
 import WbsSummaryCards from "@/components/progressrevenue/WbsSummaryCards.vue";
@@ -10,15 +9,17 @@ import WbsTreeTable from "@/components/progressrevenue/WbsTreeTable.vue";
 import WbsWeekSummary from "@/components/progressrevenue/WbsWeekSummary.vue";
 import WbsDeviationPanel from "@/components/progressrevenue/WbsDeviationPanel.vue";
 import WbsAiSummary from "@/components/progressrevenue/WbsAiSummary.vue";
-
 import Footer from "@/components/common/Footer.vue";
 import { budgetService } from "@/services/budgetServices";
 import { wbsService } from "@/services/wbsService.js";
 import { useWbs } from "@/composables/useWbs";
 import { useProject } from "@/composables/useProject";
+import { useAuth } from "@/composables/useAuth";
 import { generateWbsPdf } from "@/utils/pdfExport";
 
 const { activeProjectId } = useProject();
+const { user } = useAuth();
+const router = useRouter();
 
 const {
   summary: wbsSummary,
@@ -38,6 +39,7 @@ const {
   clearProgressError,
   sync: syncWbs,
   saveProgressBatch,
+  requestProgressDecrease,
 } = useWbs(activeProjectId);
 
 const selectedMonth = ref("all");
@@ -46,6 +48,8 @@ const weekSummaryLoading = ref(true);
 const weekSummaryError = ref("");
 const hasUnsavedWbsChanges = ref(false);
 const showWbsDiscardDialog = ref(false);
+const pendingApprovalCount = ref(null);
+const approvalCountError = ref("");
 let resolveRouteLeave = null;
 
 function keepWbsChanges() {
@@ -151,10 +155,38 @@ const fetchProgressRevenue = async () => {
 };
 
 watch(activeProjectId, (projectId) => {
+  void loadPendingApprovalCount();
   if (projectId === null) return;
   void fetchProgressRevenue();
   void loadWeekSummary();
 });
+
+async function loadPendingApprovalCount() {
+  if (user.value?.role !== "VP" || activeProjectId.value === null) {
+    pendingApprovalCount.value = null;
+    approvalCountError.value = "";
+    return;
+  }
+
+  approvalCountError.value = "";
+  try {
+    const response = await wbsService.getProgressChangeRequests(
+      activeProjectId.value,
+      1,
+    );
+    pendingApprovalCount.value = response.data?.meta?.total ?? 0;
+  } catch (error) {
+    pendingApprovalCount.value = null;
+    approvalCountError.value =
+      error.message || "Jumlah antrean persetujuan gagal dimuat.";
+  }
+}
+
+watch(
+  () => user.value?.role,
+  () => void loadPendingApprovalCount(),
+  { immediate: true },
+);
 
 void fetchProgressRevenue();
 void loadWeekSummary();
@@ -229,8 +261,6 @@ function downloadWbsPdf() {
     <main
       class="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 py-6 space-y-2"
     >
-      <ProjectSelectorBar />
-
       <ProjectProfileCard :projectInfo="projectMeta" />
 
       <ProgressRevenueTable
@@ -252,8 +282,19 @@ function downloadWbsPdf() {
         <WbsSummaryCards
           :summary="wbsSummary"
           :can-download="wbsItems.length > 0"
+          :can-review-approvals="user?.role === 'VP'"
+          :pending-approval-count="pendingApprovalCount"
           @download="downloadWbsPdf"
+          @open-approvals="
+            router.push({
+              name: 'ProgressApproval',
+              query: { project: activeProjectId, tab: 'pending' },
+            })
+          "
         />
+        <p v-if="approvalCountError" role="alert" class="text-xs text-error">
+          {{ approvalCountError }}
+        </p>
 
         <p
           v-if="wbsError && wbsVisibleItems.length > 0"
@@ -298,6 +339,7 @@ function downloadWbsPdf() {
             :saving-wbs-no="savingWbsNo"
             :progress-errors="progressErrors"
             :save-progress-batch="saveProgressBatch"
+            :request-progress-decrease="requestProgressDecrease"
             @toggle="toggleExpanded"
             @clear-progress-error="clearProgressError"
             @dirty-change="hasUnsavedWbsChanges = $event"

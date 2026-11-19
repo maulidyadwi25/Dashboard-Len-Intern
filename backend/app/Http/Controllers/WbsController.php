@@ -6,6 +6,7 @@ use App\Http\Resources\WbsItemResource;
 use App\Models\MasterProject;
 use App\Models\WbsAiSummary;
 use App\Models\WbsItem;
+use App\Models\WbsProgressChangeLog;
 use App\Models\WbsProgressEntry;
 use App\Models\WbsWeeklyValue;
 use App\Services\GoogleSheetsService;
@@ -15,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -343,22 +345,6 @@ class WbsController extends Controller
             ], 404);
         }
 
-        $item = $project->wbsItems()->where('wbs_no', $wbsNo)->first();
-
-        if (! $item) {
-            return response()->json([
-                'status' => 'error',
-                'message' => "WBS item [{$wbsNo}] not found for project [{$id}].",
-            ], 404);
-        }
-
-        if ($project->wbsItems()->where('parent_wbs_no', $item->wbs_no)->exists()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => "WBS item [{$wbsNo}] is not a leaf item and cannot receive progress input.",
-            ], 422);
-        }
-
         $percent = $request->input('percent');
 
         if (! is_numeric($percent) || (float) $percent < 0 || (float) $percent > 100) {
@@ -368,20 +354,82 @@ class WbsController extends Controller
             ], 422);
         }
 
+        $user = $request->user();
+        $comment = trim((string) $request->input('comment', ''));
+
         $weekInfo = WbsDateHelper::resolveWeekInfo(now('Asia/Jakarta'));
 
-        $entry = WbsProgressEntry::query()->updateOrCreate(
-            [
+        $result = DB::transaction(function () use ($project, $wbsNo, $id, $weekInfo, $percent, $comment, $user) {
+            $item = $project->wbsItems()
+                ->where('wbs_no', $wbsNo)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $item instanceof WbsItem) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "WBS item [{$wbsNo}] not found for project [{$id}].",
+                ], 404);
+            }
+
+            if ($project->wbsItems()->where('parent_wbs_no', $item->wbs_no)->exists()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "WBS item [{$wbsNo}] is not a leaf item and cannot receive progress input.",
+                ], 422);
+            }
+
+            $latestEntry = WbsProgressEntry::query()
+                ->where('master_project_id', $project->id)
+                ->where('wbs_no', $wbsNo)
+                ->orderByDesc('year')
+                ->orderByDesc('month')
+                ->orderByDesc('week')
+                ->lockForUpdate()
+                ->first();
+            $previousPercent = $latestEntry ? (float) $latestEntry->percent : null;
+
+            if ($user->isPa() && (float) $percent <= ($previousPercent ?? 0)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'PA can only increase progress above the latest saved value.',
+                    'errors' => ['percent' => ['Progres baru harus lebih besar dari progres terbaru.']],
+                ], 422);
+            }
+
+            $entry = WbsProgressEntry::query()->updateOrCreate(
+                [
+                    'master_project_id' => $project->id,
+                    'wbs_no' => $wbsNo,
+                    'year' => $weekInfo['year'],
+                    'month' => $weekInfo['month'],
+                    'week' => $weekInfo['week'],
+                ],
+                ['percent' => (float) $percent],
+            );
+
+            WbsProgressChangeLog::query()->create([
                 'master_project_id' => $project->id,
+                'user_id' => $user->id,
+                'actor_name' => $user->name,
+                'actor_role' => $user->role,
                 'wbs_no' => $wbsNo,
                 'year' => $weekInfo['year'],
                 'month' => $weekInfo['month'],
                 'week' => $weekInfo['week'],
-            ],
-            [
-                'percent' => (float) $percent,
-            ]
-        );
+                'previous_percent' => $previousPercent,
+                'new_percent' => (float) $percent,
+                'comment' => $comment !== '' ? $comment : null,
+            ]);
+
+            return [$item, $entry];
+        });
+
+        if (! is_array($result)) {
+            return $result;
+        }
+
+        [$item, $entry] = $result;
 
         return response()->json([
             'status' => 'success',
