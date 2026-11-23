@@ -27,7 +27,7 @@ class WbsProgressChangeLogController extends Controller
             ->where('wbs_progress_change_logs.master_project_id', $project->id)
             ->orderByDesc('wbs_progress_change_logs.created_at')
             ->orderByDesc('wbs_progress_change_logs.id')
-            ->paginate(20, [
+            ->paginate(10, [
                 'wbs_progress_change_logs.id',
                 'wbs_progress_change_logs.actor_name',
                 'wbs_progress_change_logs.actor_role',

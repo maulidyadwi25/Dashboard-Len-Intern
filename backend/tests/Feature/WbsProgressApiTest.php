@@ -274,6 +274,14 @@ test('project analyst can queue a decrease request for vice president approval',
         ->assertJsonPath('data.previous_percent', 70)
         ->assertJsonPath('data.requested_percent', 45);
 
+    $secondPa = User::factory()->create(['role' => User::ROLE_PA]);
+    $this->actingAs($secondPa)
+        ->postJson("/api/projects/{$project->id}/wbs/1.1.1/progress-change-requests", [
+            'percent' => 50,
+            'comment' => 'Pengajuan kedua.',
+        ])->assertConflict()
+        ->assertJsonPath('message', 'Pengajuan perubahan untuk task ini masih menunggu persetujuan VP.');
+
     expect(WbsProgressChangeRequest::query()->count())->toBe(1)
         ->and((float) WbsProgressEntry::query()->firstOrFail()->percent)->toBe(70.0)
         ->and(WbsProgressChangeLog::query()->count())->toBe(0);

@@ -177,7 +177,9 @@ onMounted(() => {
       class="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
     >
       <div class="flex items-center gap-3">
-        <h2 class="text-base font-bold tracking-tight text-slate-900 sm:text-lg">
+        <h2
+          class="text-base font-bold tracking-tight text-slate-900 sm:text-lg"
+        >
           Log Audit Persetujuan Terkini
         </h2>
         <span
@@ -195,7 +197,7 @@ onMounted(() => {
             class="h-8 rounded-lg px-3.5 text-xs font-semibold transition"
             :class="
               activeFilter === 'all'
-                ? 'bg-[#0a4c78] text-white shadow-xs'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             "
             @click="setFilter('all')"
@@ -242,7 +244,10 @@ onMounted(() => {
     </div>
 
     <!-- Error State -->
-    <div v-if="error" class="m-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+    <div
+      v-if="error"
+      class="m-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"
+    >
       {{ error }}
     </div>
 
@@ -271,7 +276,9 @@ onMounted(() => {
           >
             <th scope="col" class="px-6 py-3.5">Kode WBS</th>
             <th scope="col" class="px-6 py-3.5">Aktivitas Pekerjaan</th>
-            <th scope="col" class="px-6 py-3.5 min-w-[260px]">KOMPARASI PROGRES FISIK</th>
+            <th scope="col" class="px-6 py-3.5 min-w-[260px]">
+              KOMPARASI PROGRES FISIK
+            </th>
             <th scope="col" class="px-6 py-3.5">Status Keputusan</th>
             <th scope="col" class="px-6 py-3.5">Pengaju (PA)</th>
             <th scope="col" class="px-6 py-3.5">Pemutus (VP / Lead)</th>
@@ -285,7 +292,9 @@ onMounted(() => {
             class="transition hover:bg-slate-50/70"
           >
             <!-- Kode WBS -->
-            <td class="whitespace-nowrap px-6 py-4 font-mono text-sm font-bold tracking-tight text-slate-900">
+            <td
+              class="whitespace-nowrap px-6 py-4 font-mono text-sm font-bold tracking-tight text-slate-900"
+            >
               WBS {{ item.wbs_no }}
             </td>
 
@@ -303,7 +312,10 @@ onMounted(() => {
               <p class="font-bold text-slate-900 line-clamp-2">
                 {{ item.activity_name || "Nama aktivitas tidak tersedia" }}
               </p>
-              <p v-if="item.comment" class="mt-0.5 text-xs text-slate-500 italic line-clamp-1">
+              <p
+                v-if="item.comment"
+                class="mt-0.5 text-xs text-slate-500 italic line-clamp-1"
+              >
                 "{{ item.comment }}"
               </p>
             </td>
@@ -312,14 +324,22 @@ onMounted(() => {
             <td class="px-6 py-4 min-w-[260px]">
               <!-- Top row: Strikethrough previous, arrow, requested, delta badge -->
               <div class="flex items-center justify-between gap-2 mb-1.5">
-                <div class="flex items-center gap-1.5 font-mono text-sm tabular-nums">
+                <div
+                  class="flex items-center gap-1.5 font-mono text-sm tabular-nums"
+                >
                   <span class="line-through text-slate-400 font-medium">
                     {{ formatDecimalPercent(item.previous_percent) }}
                   </span>
-                  <span class="text-blue-600 font-bold text-xs" aria-hidden="true">→</span>
+                  <span
+                    class="text-blue-600 font-bold text-xs"
+                    aria-hidden="true"
+                    >→</span
+                  >
                   <span
                     class="font-extrabold"
-                    :class="getDiff(item) < 0 ? 'text-red-600' : 'text-emerald-700'"
+                    :class="
+                      getDiff(item) < 0 ? 'text-red-600' : 'text-emerald-700'
+                    "
                   >
                     {{ formatDecimalPercent(item.requested_percent) }}
                   </span>
@@ -339,7 +359,9 @@ onMounted(() => {
               </div>
 
               <!-- Progress bar -->
-              <div class="w-full h-1.5 bg-blue-100/70 rounded-full overflow-hidden">
+              <div
+                class="w-full h-1.5 bg-blue-100/70 rounded-full overflow-hidden"
+              >
                 <div
                   class="h-full rounded-full transition-all duration-300"
                   :class="getDiff(item) < 0 ? 'bg-rose-600' : 'bg-emerald-600'"
@@ -350,9 +372,19 @@ onMounted(() => {
               </div>
 
               <!-- Bottom row: Baseline and Sebelum -->
-              <div class="flex items-center justify-between text-[11px] text-slate-500 font-medium mt-1.5">
+              <div
+                class="flex items-center justify-between text-[11px] text-slate-500 font-medium mt-1.5"
+              >
                 <span>
-                  Baseline: {{ formatSimplePercent(item.baseline_percent ?? (item.requested_percent > item.previous_percent ? item.requested_percent : item.previous_percent)) }}
+                  Baseline:
+                  {{
+                    formatSimplePercent(
+                      item.baseline_percent ??
+                        (item.requested_percent > item.previous_percent
+                          ? item.requested_percent
+                          : item.previous_percent),
+                    )
+                  }}
                 </span>
                 <span>
                   Sebelum: {{ formatSimplePercent(item.previous_percent) }}
@@ -385,17 +417,23 @@ onMounted(() => {
             </td>
 
             <!-- Pengaju (PA) -->
-            <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-700">
+            <td
+              class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-700"
+            >
               {{ item.requester_name || "-" }}
             </td>
 
             <!-- Pemutus (VP / Lead) -->
-            <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-700">
+            <td
+              class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-700"
+            >
               {{ item.reviewer_name || "VP / Lead" }}
             </td>
 
             <!-- Waktu Putusan -->
-            <td class="whitespace-nowrap px-6 py-4 text-sm text-slate-500 tabular-nums">
+            <td
+              class="whitespace-nowrap px-6 py-4 text-sm text-slate-500 tabular-nums"
+            >
               {{ formatDecisionTime(item.reviewed_at || item.created_at) }}
             </td>
           </tr>

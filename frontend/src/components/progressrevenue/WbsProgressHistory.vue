@@ -153,7 +153,9 @@ onMounted(() => {
       class="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
     >
       <div class="flex items-center gap-3">
-        <h2 class="text-base font-bold tracking-tight text-slate-900 sm:text-lg">
+        <h2
+          class="text-base font-bold tracking-tight text-slate-900 sm:text-lg"
+        >
           Log Perubahan Langsung VP
         </h2>
         <span
@@ -318,7 +320,8 @@ onMounted(() => {
                   {{
                     formatSimplePercent(
                       item.baseline_percent ??
-                        (Number(item.new_percent) > Number(item.previous_percent)
+                        (Number(item.new_percent) >
+                        Number(item.previous_percent)
                           ? item.new_percent
                           : item.previous_percent),
                     )
@@ -331,15 +334,23 @@ onMounted(() => {
             </td>
 
             <!-- Periode WBS -->
-            <td class="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-700">
-              <span class="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+            <td
+              class="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-700"
+            >
+              <span
+                class="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
+              >
                 {{ formatPeriod(item) }}
               </span>
             </td>
 
             <!-- Pelaku (Eksekutor) -->
-            <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-700">
-              <p class="font-bold text-slate-900">{{ item.actor_name || "-" }}</p>
+            <td
+              class="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-700"
+            >
+              <p class="font-bold text-slate-900">
+                {{ item.actor_name || "-" }}
+              </p>
               <p class="text-xs text-slate-500 uppercase tracking-wider">
                 {{ item.actor_role || "VP" }}
               </p>
@@ -366,9 +377,15 @@ onMounted(() => {
 
     <!-- Pagination Footer -->
     <div
-      v-if="lastPage > 1"
-      class="flex items-center justify-between border-t border-slate-100 px-6 py-4 text-xs font-medium text-slate-500"
+      v-if="total > 0"
+      class="flex items-center justify-end gap-4 border-t border-slate-100 px-6 py-4 text-xs font-medium text-slate-500"
     >
+      <span>
+        Menampilkan {{ (currentPage - 1) * 10 + 1 }}–{{
+          Math.min(currentPage * 10, total)
+        }}
+        dari {{ total }} log
+      </span>
       <button
         type="button"
         class="h-8 rounded-lg border border-slate-200 px-3 hover:bg-slate-50 disabled:opacity-40"

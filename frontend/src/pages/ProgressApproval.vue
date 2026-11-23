@@ -103,14 +103,16 @@ onMounted(() => {
         >
           <CheckSquare
             class="h-4 w-4"
-            :class="activeTab === 'pending' ? 'text-[#0a4c78]' : 'text-slate-500'"
+            :class="
+              activeTab === 'pending' ? 'text-[#0a4c78]' : 'text-slate-500'
+            "
           />
           <span>Menunggu Persetujuan</span>
           <span
             class="rounded-full px-2 py-0.5 text-[11px] font-extrabold"
             :class="
               activeTab === 'pending'
-                ? 'bg-[#0a4c78] text-white'
+                ? 'bg-blue-600 text-white'
                 : 'bg-slate-300/80 text-slate-700'
             "
           >
@@ -124,7 +126,7 @@ onMounted(() => {
           class="inline-flex h-10 items-center gap-2.5 rounded-xl px-4 text-xs font-bold transition"
           :class="
             activeTab === 'history'
-              ? 'bg-white text-[#0a4c78] shadow-xs'
+              ? 'bg-white text-600 shadow-xs'
               : 'text-slate-600 hover:bg-white/60 hover:text-slate-900'
           "
           :aria-current="activeTab === 'history' ? 'page' : undefined"
@@ -132,14 +134,14 @@ onMounted(() => {
         >
           <History
             class="h-4 w-4"
-            :class="activeTab === 'history' ? 'text-[#0a4c78]' : 'text-slate-500'"
+            :class="activeTab === 'history' ? 'text-600' : 'text-slate-500'"
           />
           <span>Riwayat Keputusan</span>
           <span
             class="rounded-full px-2.5 py-0.5 text-[11px] font-bold"
             :class="
               activeTab === 'history'
-                ? 'bg-blue-100 text-[#0a4c78]'
+                ? 'bg-blue-600 text-white'
                 : 'bg-slate-200 text-slate-700'
             "
           >
@@ -161,14 +163,16 @@ onMounted(() => {
         >
           <Shield
             class="h-4 w-4"
-            :class="activeTab === 'direct_logs' ? 'text-[#0a4c78]' : 'text-slate-500'"
+            :class="
+              activeTab === 'direct_logs' ? 'text-[#0a4c78]' : 'text-slate-500'
+            "
           />
           <span>Perubahan Langsung VP</span>
           <span
             class="rounded-full px-2 py-0.5 text-[11px] font-bold"
             :class="
               activeTab === 'direct_logs'
-                ? 'bg-blue-100 text-[#0a4c78]'
+                ? 'bg-blue-600 text-white'
                 : 'bg-slate-200 text-slate-700'
             "
           >

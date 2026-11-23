@@ -11,7 +11,7 @@ function withWbsErrorHandling(request) {
     const responseData = error?.response?.data ?? {};
     const message =
       status === 409
-        ? "Ringkasan AI sedang diproses. Coba lagi sebentar."
+        ? responseData.message || "Permintaan tidak dapat diproses karena ada konflik data."
         : status === 429
           ? "Permintaan terlalu sering. Tunggu sebentar sebelum mencoba lagi."
           : status === 502
