@@ -141,6 +141,7 @@ function parseRecommendations(): Recommendation[] | null {
       .split("|")
       .map((part) => part.trim());
     const detail = detailParts.join(" | ");
+    if (!priority && !title && !detail) continue;
     if (!priority || !title || !detail) return null;
     recommendations.push({ priority, title, detail });
   }
@@ -422,7 +423,7 @@ watch(
           <p
             class="whitespace-pre-wrap text-sm leading-relaxed text-on-surface text-justify"
           >
-            {{ summary.content.executive_summary }}
+            {{ summary.content.executive_summary?.trim() || "-" }}
           </p>
         </section>
 
@@ -459,19 +460,19 @@ watch(
                         recommendation.priority
                       }}
                     </span>
-                    {{ recommendation.title }}
+                    {{ recommendation.title?.trim() || "-" }}
                   </p>
                   <p
                     class="mt-1.5 text-sm leading-relaxed text-on-surface-variant text-justify"
                   >
-                    {{ recommendation.detail }}
+                    {{ recommendation.detail?.trim() || "-" }}
                   </p>
                 </div>
               </div>
             </li>
           </ol>
           <p v-else class="text-sm text-on-surface-variant italic">
-            Tidak ada rekomendasi.
+            -
           </p>
         </section>
 
@@ -490,11 +491,11 @@ watch(
               :key="index"
               class="list-disc marker:text-primary leading-relaxed"
             >
-              {{ risk }}
+              {{ risk?.trim() || "-" }}
             </li>
           </ul>
           <p v-else class="text-sm text-on-surface-variant italic">
-            Tidak ada risiko tercatat.
+            -
           </p>
         </section>
       </template>

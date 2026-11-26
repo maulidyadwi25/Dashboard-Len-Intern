@@ -131,7 +131,10 @@ class WbsAiSummaryService
     {
         $data = is_array($content) ? $content : [];
 
-        if (! isset($data['executive_summary']) || ! is_string($data['executive_summary'])) {
+        // Laravel converts empty request strings to null before validation.
+        // Accept that normalized empty value and persist it as an empty string.
+        if (! array_key_exists('executive_summary', $data)
+            || ($data['executive_summary'] !== null && ! is_string($data['executive_summary']))) {
             throw new \InvalidArgumentException('Summary content must include executive_summary as string.');
         }
 
@@ -174,7 +177,7 @@ class WbsAiSummaryService
         }
 
         return [
-            'executive_summary' => trim($data['executive_summary']),
+            'executive_summary' => trim($data['executive_summary'] ?? ''),
             'recommendations' => $recommendations,
             'risks' => $risks,
         ];

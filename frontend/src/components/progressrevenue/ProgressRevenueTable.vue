@@ -81,18 +81,30 @@ const monthOptions = MONTHS_UPPER.map((label, index) => ({
 }));
 const weekOptions = [1, 2, 3, 4];
 const yearOptions = computed(() =>
-  [...new Set(props.periods.map((period) => Number(period.year)).filter(Number.isFinite))]
-    .sort((left, right) => left - right)
+  [
+    ...new Set(
+      props.periods
+        .map((period) => Number(period.year))
+        .filter(Number.isFinite),
+    ),
+  ]
+    .sort((a, b) => a - b)
     .map(String),
 );
-
+const appliedStart = ref({ week: "", month: "", year: "" });
+const appliedEnd = ref({ week: "", month: "", year: "" });
 function periodOrdinal(selection) {
-  if (!selection.week || !selection.month || !selection.year) return null;
+  if (!selection.week || !selection.month) return null;
+  const yearOffset = selection.year ? Number(selection.year) * 48 : 0;
   return (
-    Number(selection.year) * 48 +
-    (Number(selection.month) - 1) * 4 +
-    Number(selection.week)
+    yearOffset + (Number(selection.month) - 1) * 4 + Number(selection.week)
   );
+}
+
+function applyDateRange() {
+  if (!hasDateRange.value || isDateRangeInvalid.value) return;
+  appliedStart.value = { ...startPeriod.value };
+  appliedEnd.value = { ...endPeriod.value };
 }
 
 const startOrdinal = computed(() => periodOrdinal(startPeriod.value));
@@ -101,9 +113,12 @@ const hasDateRange = computed(
   () => startOrdinal.value !== null && endOrdinal.value !== null,
 );
 const hasDateSelection = computed(() =>
-  [startPeriod.value, endPeriod.value].some((period) =>
-    period.week || period.month || period.year,
+  [startPeriod.value, endPeriod.value].some(
+    (period) => period.week || period.month || period.year,
   ),
+);
+const hasAppliedDateRange = computed(
+  () => periodOrdinal(appliedStart.value) !== null && periodOrdinal(appliedEnd.value) !== null,
 );
 const hasIncompleteDateRange = computed(
   () => hasDateSelection.value && !hasDateRange.value,
@@ -111,15 +126,18 @@ const hasIncompleteDateRange = computed(
 const isDateRangeInvalid = computed(
   () => hasDateRange.value && startOrdinal.value > endOrdinal.value,
 );
-const selectedPeriodLabel = computed(() =>
-  hasDateRange.value
-    ? `${startPeriod.value.week}/${startPeriod.value.month}/${startPeriod.value.year} - ${endPeriod.value.week}/${endPeriod.value.month}/${endPeriod.value.year}`
-    : "Semua Periode",
-);
+const selectedPeriodLabel = computed(() => {
+  if (!hasDateRange.value) return "Semua Periode";
+  const label = (period) =>
+    `W${period.week} ${monthOptions[Number(period.month) - 1]?.label ?? ""} ${period.year}`.trim();
+  return `${label(appliedStart.value)} – ${label(appliedEnd.value)}`;
+});
 
 function resetDateRange() {
   startPeriod.value = { week: "", month: "", year: "" };
   endPeriod.value = { week: "", month: "", year: "" };
+  appliedStart.value = { ...startPeriod.value };
+  appliedEnd.value = { ...endPeriod.value };
 }
 
 /**
@@ -130,12 +148,21 @@ const filteredPeriodEntries = computed(() => {
   const indexedPeriods = props.periods.map((period, originalIndex) => ({
     period,
     originalIndex,
-    ordinal: periodOrdinal(period),
+    ordinal:
+      period.week == null
+        ? null
+        : (appliedStart.value.year && appliedEnd.value.year
+            ? Number(period.year) * 48
+            : 0) +
+          (Number(period.month) - 1) * 4 +
+          Number(period.week),
   }));
 
   if (isDateRangeInvalid.value) return [];
 
-  if (!hasDateRange.value) {
+  const appliedStartOrdinal = periodOrdinal(appliedStart.value);
+  const appliedEndOrdinal = periodOrdinal(appliedEnd.value);
+  if (appliedStartOrdinal === null || appliedEndOrdinal === null) {
     return indexedPeriods.map(({ period, originalIndex }) => ({
       period,
       originalIndex,
@@ -144,8 +171,10 @@ const filteredPeriodEntries = computed(() => {
 
   return indexedPeriods
     .filter(
-      ({ ordinal }) => ordinal !== null &&
-        ordinal >= startOrdinal.value && ordinal <= endOrdinal.value,
+      ({ ordinal }) =>
+        ordinal !== null &&
+        ordinal >= appliedStartOrdinal &&
+        ordinal <= appliedEndOrdinal,
     )
     .map(({ period, originalIndex }) => ({ period, originalIndex }));
 });
@@ -305,12 +334,20 @@ const handleDownload = () => {
     class="overflow-hidden rounded-xl border-outline-variant bg-surface-lowest shadow-sm"
   >
     <!-- Header: title, filter, download -->
-    <div class="space-y-4 border-b border-outline-variant bg-white px-6 py-5 text-on-surface">
-      <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+    <div
+      class="space-y-4 border-b border-outline-variant bg-white px-6 py-5 text-on-surface"
+    >
+      <div
+        class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"
+      >
         <div class="space-y-1">
-        <h3 class="text-title-md font-semibold">
-          Laporan Progress Pekerjaan Mingguan &amp; Akumulasi RKAP
-        </h3>
+          <h3 class="text-title-md font-semibold">
+            Laporan Progress Pekerjaan Mingguan &amp; Akumulasi RKAP
+          </h3>
+          <p class="text-sm text-on-surface-variant">
+            Komparasi target terencana vs realisasi fisik lapangan (Periode:
+            {{ selectedPeriodLabel }})
+          </p>
         </div>
         <button
           type="button"
@@ -323,59 +360,138 @@ const handleDownload = () => {
         </button>
       </div>
 
-      <div class="grid grid-cols-1 items-end gap-4 rounded-xl border border-outline-variant bg-surface px-4 py-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]">
-        <fieldset class="min-w-0">
-          <legend class="mb-2 text-label-caps font-semibold text-on-surface-variant">DARI</legend>
-          <div class="grid grid-cols-3 gap-2">
-          <select v-model="startPeriod.week" aria-label="Minggu mulai" class="h-10 min-w-0 w-full rounded-lg border border-outline-variant bg-surface-lowest px-3 text-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+      <div class="flex flex-wrap items-center gap-2 rounded-lg px-3 py-2">
+        <span class="mr-1 text-xs font-bold text-on-surface-variant"
+          >● RENTANG:</span
+        >
+        <fieldset
+          class="flex min-w-0 items-center gap-1 rounded-md border border-outline-variant bg-surface-lowest px-2"
+        >
+          <legend class="sr-only">Dari</legend>
+          <span class="text-xs font-semibold text-on-surface-variant"
+            >DARI</span
+          >
+          <select
+            v-model="startPeriod.week"
+              @change="applyDateRange"
+            aria-label="Minggu mulai"
+            class="h-8 w-16 border-0 bg-transparent px-1 text-sm text-on-surface focus:outline-none focus:ring-0"
+          >
             <option value="">W</option>
-            <option v-for="week in weekOptions" :key="week" :value="String(week)">W{{ week }}</option>
+            <option
+              v-for="week in weekOptions"
+              :key="week"
+              :value="String(week)"
+            >
+              W{{ week }}
+            </option>
           </select>
-          <select v-model="startPeriod.month" aria-label="Bulan mulai" class="h-10 min-w-0 w-full rounded-lg border border-outline-variant bg-surface-lowest px-3 text-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+          <select
+            v-model="startPeriod.month"
+              @change="applyDateRange"
+            aria-label="Bulan mulai"
+            class="h-8 w-28 border-0 bg-transparent px-1 text-sm text-on-surface focus:outline-none focus:ring-0"
+          >
             <option value="">Bulan</option>
-            <option v-for="month in monthOptions" :key="month.value" :value="month.value">{{ month.label }}</option>
+            <option
+              v-for="month in monthOptions"
+              :key="month.value"
+              :value="month.value"
+            >
+              {{ month.label }}
+            </option>
           </select>
-          <select v-model="startPeriod.year" aria-label="Tahun mulai" class="h-10 min-w-0 w-full rounded-lg border border-outline-variant bg-surface-lowest px-3 text-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+          <select
+            v-model="startPeriod.year"
+              @change="applyDateRange"
+            aria-label="Tahun mulai"
+            class="h-8 w-20 border-0 bg-transparent px-1 text-sm text-on-surface focus:outline-none focus:ring-0"
+          >
             <option value="">Tahun</option>
-            <option v-for="year in yearOptions" :key="year" :value="year">{{ year }}</option>
+            <option v-for="year in yearOptions" :key="year" :value="year">
+              {{ year }}
+            </option>
           </select>
-          </div>
         </fieldset>
 
-        <span class="hidden px-2 text-xl text-on-surface-variant lg:block" aria-hidden="true">→</span>
+        <span
+          class="hidden px-2 text-xl text-on-surface-variant lg:block"
+          aria-hidden="true"
+          >→</span
+        >
 
-        <fieldset class="min-w-0">
-          <legend class="mb-2 text-label-caps font-semibold text-on-surface-variant">SAMPAI</legend>
-          <div class="grid grid-cols-3 gap-2">
-          <select v-model="endPeriod.week" aria-label="Minggu akhir" class="h-10 min-w-0 w-full rounded-lg border border-outline-variant bg-surface-lowest px-3 text-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+        <fieldset
+          class="flex min-w-0 items-center gap-1 rounded-md border border-outline-variant bg-surface-lowest px-2"
+        >
+          <legend class="sr-only">Sampai</legend>
+          <span class="text-xs font-semibold text-primary">SAMPAI</span>
+          <select
+            v-model="endPeriod.week"
+              @change="applyDateRange"
+            aria-label="Minggu akhir"
+            class="h-8 w-16 border-0 bg-transparent px-1 text-sm text-on-surface focus:outline-none focus:ring-0"
+          >
             <option value="">W</option>
-            <option v-for="week in weekOptions" :key="week" :value="String(week)">W{{ week }}</option>
+            <option
+              v-for="week in weekOptions"
+              :key="week"
+              :value="String(week)"
+            >
+              W{{ week }}
+            </option>
           </select>
-          <select v-model="endPeriod.month" aria-label="Bulan akhir" class="h-10 min-w-0 w-full rounded-lg border border-outline-variant bg-surface-lowest px-3 text-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+          <select
+            v-model="endPeriod.month"
+              @change="applyDateRange"
+            aria-label="Bulan akhir"
+            class="h-8 w-28 border-0 bg-transparent px-1 text-sm text-on-surface focus:outline-none focus:ring-0"
+          >
             <option value="">Bulan</option>
-            <option v-for="month in monthOptions" :key="month.value" :value="month.value">{{ month.label }}</option>
+            <option
+              v-for="month in monthOptions"
+              :key="month.value"
+              :value="month.value"
+            >
+              {{ month.label }}
+            </option>
           </select>
-          <select v-model="endPeriod.year" aria-label="Tahun akhir" class="h-10 min-w-0 w-full rounded-lg border border-outline-variant bg-surface-lowest px-3 text-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary">
+          <select
+            v-model="endPeriod.year"
+              @change="applyDateRange"
+            aria-label="Tahun akhir"
+            class="h-8 w-20 border-0 bg-transparent px-1 text-sm text-on-surface focus:outline-none focus:ring-0"
+          >
             <option value="">Tahun</option>
-            <option v-for="year in yearOptions" :key="year" :value="year">{{ year }}</option>
+            <option v-for="year in yearOptions" :key="year" :value="year">
+              {{ year }}
+            </option>
           </select>
-          </div>
         </fieldset>
 
         <button
+          v-if="hasAppliedDateRange"
           type="button"
-          class="h-10 whitespace-nowrap rounded-lg border border-primary px-4 text-body-sm font-semibold text-primary transition hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50"
+          class="h-8 whitespace-nowrap rounded-md border border-outline-variant bg-surface-lowest px-3 text-sm font-medium text-on-surface-variant"
           :disabled="!hasDateSelection"
           @click="resetDateRange"
         >
-          Reset Filter
+          ↻ Reset Filter
         </button>
+        <span
+          class="ml-auto rounded-md border border-outline-variant bg-surface-lowest px-2 py-1 text-xs text-on-surface-variant"
+          >{{ flatWeeks.length }} Kolom Aktif</span
+        >
       </div>
       <p v-if="isDateRangeInvalid" class="text-sm text-error" role="alert">
         Tanggal mulai harus lebih awal dari atau sama dengan tanggal akhir.
       </p>
-      <p v-else-if="hasIncompleteDateRange" class="text-sm text-on-surface-variant" role="status">
-        Lengkapi minggu, bulan, dan tahun pada tanggal mulai dan akhir untuk menerapkan filter.
+      <p
+        v-else-if="hasIncompleteDateRange"
+        class="text-sm text-on-surface-variant"
+        role="status"
+      >
+        Lengkapi minggu, bulan, dan tahun pada tanggal mulai dan akhir untuk
+        menerapkan filter.
       </p>
     </div>
 
@@ -435,9 +551,7 @@ const handleDownload = () => {
     >
       <table
         :style="{ minWidth: `${220 + flatWeeks.length * 64}px` }"
-        :class="[
-          'w-full border-collapse text-sm',
-        ]"
+        :class="['w-full border-collapse text-sm']"
       >
         <thead>
           <!-- Month group row -->
