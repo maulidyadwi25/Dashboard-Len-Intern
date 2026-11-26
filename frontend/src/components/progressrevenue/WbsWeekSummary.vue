@@ -43,7 +43,7 @@ function formatPercent(value: number): string {
 <template>
   <section
     aria-label="Ringkasan WBS pekan ini"
-    class="flex flex-col overflow-hidden rounded-2xl bg-surface-container-lowest transition-all"
+    class="flex min-h-[30rem] max-h-[70vh] flex-col overflow-hidden rounded-2xl bg-surface-container-lowest transition-all"
   >
     <!-- Header -->
     <header
@@ -82,11 +82,11 @@ function formatPercent(value: number): string {
       Tidak ada aktivitas WBS berstatus Critical pekan ini.
     </div>
 
-    <div v-else class="space-y-3 p-4">
+    <div v-else class="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
       <article
         v-for="item in criticalItems"
         :key="item.wbs_no"
-        class="group relative flex flex-col gap-3 rounded-xl bg-surface-container-low p-4 pl-5 transition-all duration-200 hover:bg-surface-container hover:pl-6"
+        class="group relative flex flex-col gap-3 rounded-xl bg-surface-container-low p-4 pl-5 transition-all duration-200 hover:bg-surface-container/50 hover:translate-x-0.5"
       >
         <!-- Garis Aksen Sisi Kiri (Pengganti Border Luar) -->
         <div

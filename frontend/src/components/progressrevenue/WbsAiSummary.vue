@@ -278,7 +278,7 @@ watch(
       <div v-else class="flex shrink-0 items-center gap-2">
         <button
           type="button"
-          class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-on-primary transition-all hover:bg-primary-600 disabled:opacity-50"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 transition-colors duration-150 hover:bg-emerald-500 hover:text-white disabled:opacity-50"
           :disabled="saving"
           aria-label="Simpan ringkasan manual"
           title="Simpan"
@@ -289,7 +289,7 @@ watch(
         </button>
         <button
           type="button"
-          class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-surface-container text-on-surface-variant transition-all hover:bg-surface-container-high disabled:opacity-50"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-transparent text-red-700 transition-colors duration-150 group-hover:bg-red-50 hover:bg-red-500 hover:text-white disabled:opacity-50"
           :disabled="saving"
           aria-label="Batalkan edit ringkasan"
           title="Batal"

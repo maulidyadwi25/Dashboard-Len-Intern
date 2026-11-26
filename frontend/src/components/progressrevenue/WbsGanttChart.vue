@@ -158,6 +158,7 @@ const currentWeekColumn = computed(() => {
 
 const toneClasses: Record<WbsBarSegment["tone"], string> = {
   plan: "border border-slate-200 bg-blue-200 rounded-lg",
+  delay: "border border-red-100 bg-red-200 rounded-lg",
   actual: "border border-blue-200 bg-blue-600 rounded-lg",
   critical: "border border-red-200 bg-red-700 rounded-lg",
   parent: "border border-slate-300 bg-slate-600 rounded-lg",
@@ -165,12 +166,11 @@ const toneClasses: Record<WbsBarSegment["tone"], string> = {
 
 function segmentTop(segment: WbsBarSegment): string {
   if (segment.kind === "parent") return "24px";
-  if (segment.kind === "plan") return "18px";
+  if (segment.kind === "plan" || segment.kind === "delay") return "18px";
   return "22px";
 }
 
 function segmentClass(segment: WbsBarSegment, index: number): string[] {
-  // Gunakan rounded yang sedikit lebih lonjong (rounded-md) agar ujungnya mulus
   const classes = [
     "absolute rounded-md transition-all",
     toneClasses[segment.tone],
@@ -179,27 +179,38 @@ function segmentClass(segment: WbsBarSegment, index: number): string[] {
   if (segment.kind === "parent") {
     classes.push("z-20 h-2");
   } else if (segment.kind === "plan") {
-    classes.push("z-20 h-5");
+    classes.push("z-10 h-5");
+  } else if (segment.kind === "delay") {
+    classes.push("z-20 h-5 rounded-lg");
   } else {
     classes.push("z-30 h-3");
-
-    // Logika sambungan (joins) untuk actual/critical agar menyatu mulus
-    const adjacentBefore = segments.value[index - 1];
-    const adjacentAfter = segments.value[index + 1];
-    const joinsPrevious =
-      (segment.kind === "actual" || segment.kind === "critical") &&
-      (adjacentBefore?.kind === "actual" ||
-        adjacentBefore?.kind === "critical") &&
-      adjacentBefore.endOrdinal + 1 === segment.startOrdinal;
-    const joinsNext =
-      (segment.kind === "actual" || segment.kind === "critical") &&
-      (adjacentAfter?.kind === "actual" ||
-        adjacentAfter?.kind === "critical") &&
-      segment.endOrdinal + 1 === adjacentAfter.startOrdinal;
-
-    if (joinsPrevious) classes.push("rounded-l-none border-l-0");
-    if (joinsNext) classes.push("rounded-r-none border-r-0");
   }
+
+  const isScheduleSegment =
+    segment.kind === "plan" || segment.kind === "delay";
+  const isActualSegment =
+    segment.kind === "actual" || segment.kind === "critical";
+  const sharesTrack = (candidate: WbsBarSegment) =>
+    isScheduleSegment
+      ? candidate.kind === "plan" || candidate.kind === "delay"
+      : isActualSegment &&
+        (candidate.kind === "actual" || candidate.kind === "critical");
+
+  const joinsPrevious = segments.value.some(
+    (candidate, candidateIndex) =>
+      candidateIndex !== index &&
+      sharesTrack(candidate) &&
+      candidate.endOrdinal + 1 === segment.startOrdinal,
+  );
+  const joinsNext = segments.value.some(
+    (candidate, candidateIndex) =>
+      candidateIndex !== index &&
+      sharesTrack(candidate) &&
+      segment.endOrdinal + 1 === candidate.startOrdinal,
+  );
+
+  if (joinsPrevious) classes.push("rounded-l-none border-l-0");
+  if (joinsNext) classes.push("rounded-r-none border-r-0");
 
   return classes;
 }

@@ -54,8 +54,8 @@ export interface WbsPeriod {
 }
 
 export interface WbsBarSegment {
-  kind: "plan" | "actual" | "critical" | "parent";
-  tone: "plan" | "actual" | "critical" | "parent";
+  kind: "plan" | "delay" | "actual" | "critical" | "parent";
+  tone: "plan" | "delay" | "actual" | "critical" | "parent";
   startOrdinal: number;
   endOrdinal: number;
   startColumn: number;
@@ -290,6 +290,15 @@ export function buildWbsBarLayout(
         range.start !== null && range.finish !== null,
     );
     const actualRanges = leaves.flatMap((leaf) => leafRanges(leaf, weeklyValues));
+    const sheetActualRanges = leaves
+      .map((leaf) => ({
+        start: leaf.actual_start_ordinal ?? null,
+        finish: leaf.actual_finish_ordinal ?? null,
+      }))
+      .filter(
+        (range): range is { start: number; finish: number } =>
+          range.start !== null && range.finish !== null,
+      );
 
     const periodOrdinals = periods.map(
       (period) =>
@@ -297,8 +306,11 @@ export function buildWbsBarLayout(
           (period.year * 48 + (period.month - 1) * 4 + period.week - 1)) +
         1,
     );
-    const summaryRanges =
-      planRanges.length > 0 ? planRanges : actualRanges;
+    const summaryRanges = [
+      ...planRanges,
+      ...actualRanges,
+      ...sheetActualRanges,
+    ];
     const start = summaryRanges.length > 0
       ? Math.min(...summaryRanges.map((range) => range.start))
       : item.level === 1
@@ -332,11 +344,13 @@ export function buildWbsBarLayout(
   const planStart = item.plan_start_ordinal ?? null;
   const planFinish = item.plan_end_ordinal ?? null;
   const actualStart = progressStart ?? item.actual_start_ordinal ?? null;
-  const actualFinish =
-    item.actual_progress_finish_ordinal ??
-    latestProgress?.ordinal ??
-    item.actual_finish_ordinal ??
-    null;
+  const isComplete =
+    item.latest_progress_percent !== null && item.latest_progress_percent >= 100;
+  const actualFinish = isComplete
+    ? item.actual_progress_finish_ordinal ?? latestProgress?.ordinal ?? item.actual_finish_ordinal ?? null
+    : progressStart !== null
+      ? currentJakartaWeekOrdinal()
+      : item.actual_finish_ordinal ?? null;
   const progressLabel = latestProgress
     ? `Progres: ${latestProgress.value}% (${latestProgress.label})`
     : item.latest_progress_percent === null
@@ -360,14 +374,22 @@ export function buildWbsBarLayout(
   if (actualStart === null || actualFinish === null) return segments;
 
   const actualTooltip = `Actual: ${rangeLabel(actualStart, actualFinish)} · ${progressLabel}`;
-  const hasCriticalRange =
-    item.status === "critical" || item.status === "overdue";
   const criticalStart =
-    hasCriticalRange && planFinish !== null && actualFinish > planFinish
+    planFinish !== null && actualFinish > planFinish
       ? Math.max(actualStart, planFinish + 1)
-      : hasCriticalRange
-        ? actualStart
-        : null;
+      : null;
+
+  if (criticalStart !== null && planFinish !== null) {
+    appendSegment(
+      segments,
+      "delay",
+      "delay",
+      planFinish + 1,
+      actualFinish,
+      periods,
+      `Terlambat: ${rangeLabel(planFinish + 1, actualFinish)}`,
+    );
+  }
 
   if (criticalStart !== null && criticalStart > actualStart) {
     appendSegment(

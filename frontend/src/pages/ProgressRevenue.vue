@@ -42,7 +42,6 @@ const {
   requestProgressDecrease,
 } = useWbs(activeProjectId);
 
-const selectedMonth = ref("all");
 const weekSummary = ref({ week_label: "", items: [] });
 const weekSummaryLoading = ref(true);
 const weekSummaryError = ref("");
@@ -268,10 +267,8 @@ function downloadWbsPdf() {
         :indicators="payload.indicators"
         :baseline="payload.baseline"
         :projectCode="projectMeta.code"
-        :selectedMonth="selectedMonth"
         :isLoading="isLoading"
         :errorMessage="errorMessage"
-        @update:selectedMonth="selectedMonth = $event"
       />
 
       <section
